@@ -18,15 +18,12 @@ def _load_model():
 
 
 def _load_audio_from_bytes(audio_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
-    """Load audio from bytes using soundfile (no ffmpeg needed)."""
     audio_buffer = io.BytesIO(audio_bytes)
     y, sr = sf.read(audio_buffer, dtype="float32")
 
-    # Convert stereo to mono
     if len(y.shape) > 1:
         y = y.mean(axis=1)
 
-    # Resample to target_sr if needed
     if sr != target_sr:
         import torch
         import torchaudio
@@ -38,24 +35,11 @@ def _load_audio_from_bytes(audio_bytes: bytes, target_sr: int = 16000) -> np.nda
 
 
 def transcribe_bytes(audio_bytes: bytes) -> str:
-    """
-    Transcribe audio from bytes using Whisper ASR.
-    Loads audio via soundfile (no ffmpeg dependency).
-
-    Stream 3 (Semantic) — Whisper provides:
-    - Severely high multilingualism (KZ/RU/EN)
-    - Strong code-switching support
-    - Weak-supervised training for robust semantics
-
-    Returns the transcribed text string.
-    """
     try:
         model = _load_model()
 
-        # Load audio as numpy array — bypass Whisper's ffmpeg-based loader
         audio = _load_audio_from_bytes(audio_bytes, target_sr=16000)
 
-        # Whisper's transcribe() accepts a numpy array directly
         result = model.transcribe(audio, fp16=False)
         text = result["text"].strip()
 

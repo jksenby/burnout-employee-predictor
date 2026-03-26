@@ -3,7 +3,6 @@ import os
 import joblib
 
 
-# Feature name definitions for each stream
 HUBERT_FEATURE_NAMES = [
     "hubert_norm", "hubert_mean", "hubert_std", "hubert_skew",
     "hubert_kurtosis", "hubert_pos_ratio", "hubert_max_abs",
@@ -38,16 +37,6 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "burnout_model.pkl")
 
 
 class BurnoutMultimodalClassifier:
-    """
-    Multimodal Late-Fusion Burnout Classifier.
-    
-    Fuses three encoder streams:
-      Stream 1 (HuBERT): Acoustic embeddings + emotion (14 features)
-      Stream 2 (WavLM):  Prosody + acoustic features (45 features)
-      Stream 3 (Whisper): Semantic/linguistic features (8 features)
-    
-    Total: 67 features → GradientBoostingClassifier → Low/Medium/High Risk
-    """
 
     def __init__(self):
         self.labels = ["Low Risk", "Medium Risk", "High Risk"]
@@ -70,21 +59,20 @@ class BurnoutMultimodalClassifier:
         """Compute summary statistics from the 768-dim HuBERT embedding."""
         emb = np.array(hubert_embedding)
         return [
-            float(np.linalg.norm(emb)),           # norm
-            float(np.mean(emb)),                   # mean
-            float(np.std(emb)),                    # std
-            float(np.mean(emb) / (np.std(emb) + 1e-10)),  # skew approx
+            float(np.linalg.norm(emb)),
+            float(np.mean(emb)),
+            float(np.std(emb)),
+            float(np.mean(emb) / (np.std(emb) + 1e-10)),
             float(np.mean((emb - np.mean(emb))**4) /
-                  (np.std(emb)**4 + 1e-10)),       # kurtosis approx
-            float(np.sum(emb > 0) / len(emb)),    # positive ratio
-            float(np.max(np.abs(emb))),            # max abs
-            float(np.min(emb)),                    # min
-            float(np.max(emb)),                    # max
-            float(np.median(emb)),                 # median
+                  (np.std(emb)**4 + 1e-10)),
+            float(np.sum(emb > 0) / len(emb)),
+            float(np.max(np.abs(emb))),
+            float(np.min(emb)),
+            float(np.max(emb)),
+            float(np.median(emb)),
         ]
 
     def _extract_wavlm_stats(self, wavlm_embedding: list) -> list:
-        """Compute summary statistics from the 768-dim WavLM embedding."""
         emb = np.array(wavlm_embedding)
         return [
             float(np.linalg.norm(emb)),
@@ -108,33 +96,21 @@ class BurnoutMultimodalClassifier:
         emotion_result: dict,
         text_features: dict
     ) -> np.ndarray:
-        """
-        Build the 62-feature vector from all streams.
-        
-        Stream 1 (HuBERT): 10 embedding stats + 4 emotion probs = 14
-        Stream 2 (WavLM):  40 acoustic/prosody features (librosa-based,
-                           informed by WavLM's noise-robust embedding context)
-        Stream 3 (Whisper): 8 text features
-        """
         vec = []
 
-        # Stream 1: HuBERT embedding statistics (10)
         vec.extend(self._extract_hubert_stats(hubert_embedding))
 
-        # Stream 1: Emotion probabilities (4)
         emotions = emotion_result.get("emotions", {})
         vec.append(emotions.get("angry", 0.0))
         vec.append(emotions.get("happy", 0.0))
         vec.append(emotions.get("sad", 0.0))
         vec.append(emotions.get("neutral", 0.0))
 
-        # Stream 2: Acoustic/prosody features from librosa (40)
         acoustic_vec = []
         for name in ACOUSTIC_FEATURE_NAMES:
             acoustic_vec.append(float(acoustic_features.get(name, 0.0)))
         vec.extend(acoustic_vec)
 
-        # Stream 3: Text features (8)
         for name in TEXT_FEATURE_NAMES:
             vec.append(float(text_features.get(name, 0.0)))
 
@@ -148,11 +124,6 @@ class BurnoutMultimodalClassifier:
         emotion_result: dict,
         text_features: dict
     ) -> dict:
-        """
-        Run burnout prediction using multimodal late fusion.
-        
-        Returns prediction with per-stream contribution analysis.
-        """
         try:
             feature_vec = self._build_feature_vector(
                 hubert_embedding, wavlm_embedding,
@@ -175,17 +146,14 @@ class BurnoutMultimodalClassifier:
         self, feature_vec: np.ndarray,
         emotion_result: dict, text_features: dict
     ) -> dict:
-        """Predict using the trained GradientBoosting model."""
         feature_vec_2d = feature_vec.reshape(1, -1)
 
-        # Handle NaN/Inf values
         feature_vec_2d = np.nan_to_num(feature_vec_2d, nan=0.0, posinf=1.0, neginf=-1.0)
 
         probabilities = self.model.predict_proba(feature_vec_2d)[0]
         predicted_class = self.model.predict(feature_vec_2d)[0]
         label = self.labels[predicted_class]
 
-        # Compute feature importances per stream
         importances = self.model.feature_importances_
         n_hubert = len(HUBERT_FEATURE_NAMES)
         n_emotion = len(EMOTION_FEATURE_NAMES)
@@ -203,14 +171,12 @@ class BurnoutMultimodalClassifier:
             ])),
         }
 
-        # Normalize stream importances
         total_imp = sum(stream_importance.values()) + 1e-10
         stream_contribution = {
             k: round(v / total_imp * 100, 1)
             for k, v in stream_importance.items()
         }
 
-        # Score is the weighted probability of medium + high risk
         score = float(probabilities[1] * 0.5 + probabilities[2] * 1.0)
 
         result = {
@@ -240,11 +206,6 @@ class BurnoutMultimodalClassifier:
         emotion_result: dict,
         text_features: dict
     ) -> dict:
-        """
-        Fallback heuristic prediction when no trained model is available.
-        Uses weighted rules based on each stream.
-        """
-        # Stream 1: HuBERT acoustic + emotion signals
         hubert_stats = self._extract_hubert_stats(hubert_embedding)
         hubert_std = hubert_stats[2]
         hubert_variability_risk = 1.0 - np.clip(hubert_std / 2.0, 0, 1)
@@ -252,7 +213,6 @@ class BurnoutMultimodalClassifier:
         emotions = emotion_result.get("emotions", {})
         exhaustion = emotion_result.get("emotional_exhaustion_score", 0.5)
 
-        # Stream 2: WavLM prosody + acoustic features
         wavlm_stats = self._extract_wavlm_stats(wavlm_embedding)
         wavlm_std = wavlm_stats[2]
         wavlm_variability_risk = 1.0 - np.clip(wavlm_std / 2.0, 0, 1)
@@ -263,26 +223,24 @@ class BurnoutMultimodalClassifier:
         pause_ratio = acoustic_features.get("pause_ratio", 0.3)
 
         prosody_risk = np.clip(
-            0.3 * (1.0 - np.clip(pitch_std / 100.0, 0, 1)) +   # low pitch variation
-            0.2 * (1.0 - np.clip(energy_mean / 0.1, 0, 1)) +   # low energy
-            0.2 * np.clip(pause_ratio, 0, 1) +                  # more pauses
-            0.3 * (1.0 - np.clip(speech_rate / 6.0, 0, 1)),     # slow speech
+            0.3 * (1.0 - np.clip(pitch_std / 100.0, 0, 1)) +
+            0.2 * (1.0 - np.clip(energy_mean / 0.1, 0, 1)) +
+            0.2 * np.clip(pause_ratio, 0, 1) +
+            0.3 * (1.0 - np.clip(speech_rate / 6.0, 0, 1)),
             0, 1
         )
 
-        # Stream 3: Whisper linguistic signals
         sentiment = text_features.get("sentiment_polarity", 0.0)
         absolutist = text_features.get("absolutist_index", 0.0)
         negative_ratio = text_features.get("negative_word_ratio", 0.0)
 
         linguistic_risk = np.clip(
-            0.4 * (1.0 - np.clip((sentiment + 1.0) / 2.0, 0, 1)) +  # negative sentiment
-            0.3 * np.clip(absolutist * 10, 0, 1) +                    # absolutist language
-            0.3 * np.clip(negative_ratio * 10, 0, 1),                 # negative words
+            0.4 * (1.0 - np.clip((sentiment + 1.0) / 2.0, 0, 1)) +
+            0.3 * np.clip(absolutist * 10, 0, 1) +
+            0.3 * np.clip(negative_ratio * 10, 0, 1),
             0, 1
         )
 
-        # Late fusion: weighted combination
         score = float(np.clip(
             0.25 * hubert_variability_risk +
             0.20 * exhaustion +
@@ -292,7 +250,6 @@ class BurnoutMultimodalClassifier:
             0.0, 1.0
         ))
 
-        # Determine label and probabilities
         if score < 0.35:
             label = self.labels[0]
             probs = [0.70, 0.25, 0.05]
@@ -329,7 +286,6 @@ class BurnoutMultimodalClassifier:
         return result
 
 
-# Singleton
 _classifier = None
 
 
@@ -347,7 +303,6 @@ def predict(
     emotion_result: dict,
     text_features: dict
 ) -> dict:
-    """Main prediction entry point."""
     classifier = getClassifier()
     return classifier.predict(
         hubert_embedding, wavlm_embedding,

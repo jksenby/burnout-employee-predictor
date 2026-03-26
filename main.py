@@ -39,16 +39,6 @@ async def root():
 
 @app.post("/predict")
 async def predict_burnout(file: UploadFile):
-    """
-    Multimodal burnout prediction pipeline.
-    
-    Orchestrates all three encoder streams:
-      1. HuBERT → acoustic embedding + SpeechBrain SER emotion
-      2. WavLM  → prosody embedding + librosa acoustic features  
-      3. Whisper → ASR transcription + NLP text features
-    
-    Late fusion → GradientBoosting → Low/Medium/High Risk
-    """
     try:
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file uploaded")
@@ -62,28 +52,24 @@ async def predict_burnout(file: UploadFile):
         print(f"Processing: {file.filename} ({len(audio_bytes)} bytes)")
         print(f"{'='*50}")
 
-        # ── Stream 1: HuBERT (Acoustics + Emotion) ──
         print("\n[Stream 1] HuBERT — acoustic embedding...")
         hubert_embedding = extract_hubert_embedding(audio_bytes)
 
         print("[Stream 1] SpeechBrain — emotion recognition...")
         emotion_result = extract_emotion(audio_bytes)
 
-        # ── Stream 2: WavLM (Prosody + Acoustic Features) ──
         print("\n[Stream 2] WavLM — prosody embedding...")
         wavlm_embedding = extract_wavlm_embedding(audio_bytes)
 
         print("[Stream 2] Librosa — acoustic features...")
         acoustic_features = extract_acoustic_features(audio_bytes)
 
-        # ── Stream 3: Whisper (Semantics + Linguistic) ──
         print("\n[Stream 3] Whisper — transcription (multilingual)...")
         transcript = transcribe_bytes(audio_bytes)
 
         print("[Stream 3] NLP — linguistic features...")
         text_feat = extract_text_features(transcript)
 
-        # ── Late Fusion → Prediction ──
         print("\n[Fusion] Running multimodal late fusion...")
         result = predict(
             hubert_embedding=hubert_embedding,
@@ -93,7 +79,6 @@ async def predict_burnout(file: UploadFile):
             text_features=text_feat,
         )
 
-        # Add metadata
         result["filename"] = file.filename
         result["file_size_bytes"] = len(audio_bytes)
         result["transcript"] = transcript

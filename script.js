@@ -10,8 +10,6 @@ const resultsContainer = document.getElementById('resultsContainer');
 
 let selectedFile = null;
 
-// ── Upload handlers ──
-
 uploadArea.addEventListener('click', () => fileInput.click());
 
 uploadArea.addEventListener('dragover', (e) => {
@@ -54,8 +52,6 @@ function handleFile(file) {
     resultsContainer.classList.remove('show');
 }
 
-// ── Analysis ──
-
 analyzeBtn.addEventListener('click', async () => {
     if (!selectedFile) return;
 
@@ -89,8 +85,6 @@ analyzeBtn.addEventListener('click', async () => {
     }
 });
 
-// ── Display Results ──
-
 function displayResults(data) {
     const {
         label, score, confidence, probabilities,
@@ -98,7 +92,6 @@ function displayResults(data) {
         text_analysis, transcript, acoustic_features, model_type
     } = data;
 
-    // Risk Card
     let riskClass = 'low';
     if (label.includes('Medium')) riskClass = 'medium';
     if (label.includes('High')) riskClass = 'high';
@@ -119,7 +112,6 @@ function displayResults(data) {
 
     document.getElementById('riskBarFill').style.width = `${scorePercent}%`;
 
-    // Probability distribution
     const probContainer = document.getElementById('probContainer');
     const probEntries = Object.entries(probabilities || {});
     probContainer.innerHTML = probEntries.map(([level, prob], i) => {
@@ -132,13 +124,11 @@ function displayResults(data) {
         `;
     }).join('');
 
-    // Model badge
     const badgeText = model_type === 'trained_gradient_boosting'
         ? 'TRAINED MODEL' : 'HEURISTIC FALLBACK';
     document.getElementById('modelBadge').innerHTML =
         `<span>${badgeText}</span>`;
 
-    // Acoustic Panel
     const af = acoustic_features || {};
     document.getElementById('acousticMetrics').innerHTML = `
         ${metricRow('Pitch Mean', formatHz(af.pitch_mean))}
@@ -152,7 +142,6 @@ function displayResults(data) {
         ${metricRow('Pause Ratio', formatPercent(af.pause_ratio))}
     `;
 
-    // Emotion Panel
     const emo = emotions || {};
     const emotionNames = ['angry', 'happy', 'sad', 'neutral'];
     document.getElementById('emotionBars').innerHTML = emotionNames.map(name => {
@@ -171,7 +160,6 @@ function displayResults(data) {
         `;
     }).join('');
 
-    // Linguistic Panel
     const ta = text_analysis || {};
     document.getElementById('linguisticMetrics').innerHTML = `
         ${metricRow('Sentiment', formatSentiment(ta.sentiment_polarity))}
@@ -184,7 +172,6 @@ function displayResults(data) {
         ${metricRow('Avg Word Length', formatFloat(ta.avg_word_length))}
     `;
 
-    // Stream Contribution Panel
     const sc = stream_contributions || {};
     const streamConfig = [
         { key: 'hubert_acoustic', label: 'HuBERT Acoustic', cls: 'hubert' },
@@ -208,15 +195,12 @@ function displayResults(data) {
         `;
     }).join('');
 
-    // Transcript
     document.getElementById('transcriptText').textContent =
         transcript || '(No transcript available)';
 
-    // Show everything
     resultsContainer.classList.add('show');
 }
 
-// ── Helpers ──
 
 function metricRow(name, value) {
     return `

@@ -168,7 +168,6 @@
             box-shadow: none;
         }
 
-        /* Loading */
         .loading {
             text-align: center;
             padding: 30px;
@@ -200,14 +199,12 @@
             color: #666;
         }
 
-        /* Results */
         .results-container {
             display: none;
         }
 
         .results-container.show { display: block; }
 
-        /* Main Risk Card */
         .risk-card {
             border-radius: 16px;
             padding: 28px;
@@ -288,7 +285,6 @@
         .risk-card.medium .risk-bar-fill { background: linear-gradient(90deg, #eab308, #facc15); }
         .risk-card.high .risk-bar-fill { background: linear-gradient(90deg, #ef4444, #f87171); }
 
-        /* Probability Distribution */
         .prob-container {
             display: flex;
             gap: 8px;
@@ -311,7 +307,6 @@
         .prob-item.med-prob .prob-value { color: #facc15; }
         .prob-item.high-prob .prob-value { color: #f87171; }
 
-        /* Analysis Panels Grid */
         .panels-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -364,7 +359,6 @@
         .metric-name { color: #888; }
         .metric-value { color: #ddd; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-        /* Emotion Bars */
         .emotion-bar-container {
             margin-bottom: 10px;
         }
@@ -397,7 +391,6 @@
         .emotion-bar-fill.sad { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
         .emotion-bar-fill.neutral { background: linear-gradient(90deg, #6b7280, #9ca3af); }
 
-        /* Stream Contribution */
         .stream-bar-container {
             margin-bottom: 10px;
         }
@@ -430,7 +423,6 @@
         .stream-bar-fill.wavlm { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
         .stream-bar-fill.linguistic { background: linear-gradient(90deg, #f472b6, #f9a8d4); }
 
-        /* Transcript Panel */
         .transcript-panel {
             background: linear-gradient(145deg, #1a1a2e, #16162a);
             border: 1px solid rgba(255,255,255,0.06);
@@ -451,7 +443,6 @@
             overflow-y: auto;
         }
 
-        /* Model Badge */
         .model-badge {
             text-align: center;
             margin-top: 6px;
@@ -481,7 +472,6 @@
             </div>
         </div>
 
-        <!-- Upload Card -->
         <div class="upload-card">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">🎙️</div>
@@ -495,7 +485,6 @@
             <button class="button" id="analyzeBtn" disabled>🔍 Analyze Speech</button>
         </div>
 
-        <!-- Loading -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <p>Running multimodal analysis...</p>
@@ -504,9 +493,7 @@
             </div>
         </div>
 
-        <!-- Results -->
         <div class="results-container" id="resultsContainer">
-            <!-- Main Risk Card -->
             <div class="risk-card" id="riskCard">
                 <div class="risk-label" id="riskLabel"></div>
                 <div class="risk-meta" id="riskMeta"></div>
@@ -517,9 +504,7 @@
                 <div class="model-badge" id="modelBadge"></div>
             </div>
 
-            <!-- Analysis Panels -->
             <div class="panels-grid">
-                <!-- Acoustic Panel -->
                 <div class="panel acoustic" id="acousticPanel">
                     <div class="panel-header">
                         <span class="panel-icon">🔊</span>
@@ -528,7 +513,6 @@
                     <div id="acousticMetrics"></div>
                 </div>
 
-                <!-- Emotion Panel -->
                 <div class="panel emotion" id="emotionPanel">
                     <div class="panel-header">
                         <span class="panel-icon">😶</span>
@@ -537,7 +521,6 @@
                     <div id="emotionBars"></div>
                 </div>
 
-                <!-- Linguistic Panel -->
                 <div class="panel linguistic" id="linguisticPanel">
                     <div class="panel-header">
                         <span class="panel-icon">📝</span>
@@ -546,7 +529,6 @@
                     <div id="linguisticMetrics"></div>
                 </div>
 
-                <!-- Stream Contribution Panel -->
                 <div class="panel stream" id="streamPanel">
                     <div class="panel-header">
                         <span class="panel-icon">📊</span>
@@ -556,7 +538,6 @@
                 </div>
             </div>
 
-            <!-- Transcript -->
             <div class="transcript-panel">
                 <div class="panel-header">
                     <span class="panel-icon">💬</span>

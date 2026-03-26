@@ -29,22 +29,15 @@ def _load_model():
 
 
 def extract_hubert_embedding(audio_bytes: bytes) -> list:
-    """
-    Extract HuBERT embedding from audio bytes.
-    HuBERT (SSL) — primary role: acoustic pattern recognition, high emotional accuracy.
-    Returns a 768-dim mean-pooled embedding as a list of floats.
-    """
     try:
         feature_extractor, model, device = _load_model()
 
         audio_buffer = io.BytesIO(audio_bytes)
         waveform, sample_rate = sf.read(audio_buffer, dtype="float32")
 
-        # Convert stereo to mono
         if len(waveform.shape) > 1:
             waveform = waveform.mean(axis=1)
 
-        # Resample to 16kHz if needed
         target_sr = 16000
         if sample_rate != target_sr:
             waveform = torch.tensor(waveform).unsqueeze(0)
@@ -63,7 +56,6 @@ def extract_hubert_embedding(audio_bytes: bytes) -> list:
         with torch.no_grad():
             outputs = model(**inputs)
             hidden_states = outputs.last_hidden_state
-            # Mean pooling over time dimension
             embedding = hidden_states.mean(dim=1)
 
         embedding_list = embedding.squeeze(0).cpu().numpy().tolist()

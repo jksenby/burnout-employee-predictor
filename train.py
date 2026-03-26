@@ -1,18 +1,3 @@
-"""
-Training pipeline for the Multimodal Burnout Prediction Model.
-
-Generates a synthetic training dataset with realistic feature distributions
-(calibrated to actual model outputs from real audio) for each burnout risk class,
-then trains a GradientBoostingClassifier.
-
-Usage:
-    python train.py
-
-The trained model is saved to burnout_model.pkl in the project directory.
-Replace synthetic data with real labeled data (e.g., RAVDESS, IEMOCAP, DAIC-WOZ)
-for production use.
-"""
-
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
@@ -30,24 +15,9 @@ np.random.seed(42)
 
 
 def generate_synthetic_sample(label: int) -> np.ndarray:
-    """
-    Generate a single synthetic feature vector for a given burnout risk class.
-
-    label: 0=Low Risk, 1=Medium Risk, 2=High Risk
-
-    Distributions are calibrated to actual model outputs from real audio
-    (HuBERT-base, WavLM-base, superb/wav2vec2-base-superb-er, librosa).
-
-    Key burnout indicators per literature:
-    - Low risk:  expressive voice, varied pitch, positive/neutral emotion
-    - Medium risk: reduced variability, mixed emotions, some fatigue signs
-    - High risk: flat prosody, low energy, sad/neutral emotion, negative language
-    """
     features = []
 
-    # ── Stream 1: HuBERT Embedding Stats (10 features) ──
-    # Real observed norms: 4.5-6.0, std: 0.15-0.25
-    if label == 0:  # Low Risk — expressive, varied
+    if label == 0:
         hubert_norm = np.random.normal(5.5, 0.8)
         hubert_mean = np.random.normal(0.005, 0.01)
         hubert_std = np.random.normal(0.20, 0.04)
@@ -58,7 +28,7 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         hubert_min = np.random.normal(-1.0, 0.25)
         hubert_max = np.random.normal(1.0, 0.25)
         hubert_median = np.random.normal(0.0, 0.02)
-    elif label == 1:  # Medium Risk — somewhat reduced
+    elif label == 1:
         hubert_norm = np.random.normal(5.0, 0.7)
         hubert_mean = np.random.normal(0.008, 0.012)
         hubert_std = np.random.normal(0.18, 0.04)
@@ -69,7 +39,7 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         hubert_min = np.random.normal(-0.9, 0.22)
         hubert_max = np.random.normal(0.9, 0.22)
         hubert_median = np.random.normal(0.005, 0.025)
-    else:  # High Risk — flat, low variability
+    else:
         hubert_norm = np.random.normal(4.5, 0.7)
         hubert_mean = np.random.normal(0.012, 0.015)
         hubert_std = np.random.normal(0.15, 0.04)
@@ -87,26 +57,22 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         hubert_max, hubert_median
     ])
 
-    # ── Stream 1: Emotion Probabilities (4 features) ──
-    # Real SER outputs can be ANY emotion regardless of burnout.
-    # Burnout signal: more sad/neutral, less happy. But must overlap!
-    if label == 0:  # Low Risk — diverse, slightly more happy/neutral
+    if label == 0:
         emo_angry = np.random.uniform(0.01, 0.40)
         emo_happy = np.random.uniform(0.15, 0.60)
         emo_sad = np.random.uniform(0.01, 0.20)
         emo_neutral = np.random.uniform(0.10, 0.55)
-    elif label == 1:  # Medium Risk — mixed signals
+    elif label == 1:
         emo_angry = np.random.uniform(0.05, 0.45)
         emo_happy = np.random.uniform(0.05, 0.40)
         emo_sad = np.random.uniform(0.05, 0.40)
         emo_neutral = np.random.uniform(0.10, 0.50)
-    else:  # High Risk — more sad/neutral, less happy
+    else:
         emo_angry = np.random.uniform(0.02, 0.50)
         emo_happy = np.random.uniform(0.01, 0.20)
         emo_sad = np.random.uniform(0.15, 0.60)
         emo_neutral = np.random.uniform(0.10, 0.50)
 
-    # Normalize to sum to 1
     emo_total = emo_angry + emo_happy + emo_sad + emo_neutral + 1e-10
     features.extend([
         emo_angry / emo_total,
@@ -115,9 +81,7 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         emo_neutral / emo_total
     ])
 
-    # ── Stream 2: Acoustic Features (40 features) ──
-    # Calibrated to librosa outputs from real speech WAV files
-    if label == 0:  # Low Risk — expressive, energetic
+    if label == 0:
         pitch_mean = np.random.normal(200, 50)
         pitch_std = np.random.normal(55, 20)
         pitch_range = np.random.normal(150, 50)
@@ -130,7 +94,7 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         hnr = np.random.normal(12, 5)
         speech_rate = np.random.normal(4.0, 1.2)
         pause_ratio = np.random.normal(0.20, 0.10)
-    elif label == 1:  # Medium Risk — moderately reduced
+    elif label == 1:
         pitch_mean = np.random.normal(180, 45)
         pitch_std = np.random.normal(40, 18)
         pitch_range = np.random.normal(110, 45)
@@ -143,7 +107,7 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         hnr = np.random.normal(9, 4.5)
         speech_rate = np.random.normal(3.2, 1.0)
         pause_ratio = np.random.normal(0.30, 0.12)
-    else:  # High Risk — flat, low energy
+    else:
         pitch_mean = np.random.normal(160, 40)
         pitch_std = np.random.normal(25, 12)
         pitch_range = np.random.normal(70, 35)
@@ -168,14 +132,11 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
         abs(spectral_centroid_mean), abs(spectral_centroid_std)
     ])
 
-    # MFCC features (13 × mean + 13 × std)
-    # Real MFCC0 is often ~-400 to -100, others much smaller
     for i in range(13):
         if i == 0:
             base = np.random.normal(-300, 80)
         else:
             base = np.random.normal(0, 30)
-        # Slight class-dependent shift
         if label == 0:
             features.append(base + np.random.normal(10, 5))
         elif label == 1:
@@ -186,7 +147,6 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
     for i in range(13):
         features.append(abs(np.random.normal(30 + i * 3, 12)))
 
-    # ── Stream 3: Text/Linguistic Features (8 features) ──
     if label == 0:
         sentiment_polarity = np.random.normal(0.10, 0.18)
         sentiment_subjectivity = np.random.normal(0.45, 0.18)
@@ -230,7 +190,6 @@ def generate_synthetic_sample(label: int) -> np.ndarray:
 
 
 def generate_dataset(n_samples: int = 1000) -> tuple:
-    """Generate synthetic training dataset."""
     X = []
     y = []
 
@@ -244,7 +203,6 @@ def generate_dataset(n_samples: int = 1000) -> tuple:
     X = np.array(X)
     y = np.array(y)
 
-    # Shuffle
     indices = np.random.permutation(len(X))
     X = X[indices]
     y = y[indices]
@@ -253,22 +211,18 @@ def generate_dataset(n_samples: int = 1000) -> tuple:
 
 
 def train_model():
-    """Train the burnout prediction model and save to disk."""
     print("=" * 60)
     print("  Multimodal Burnout Prediction — Training Pipeline")
     print("=" * 60)
 
-    # Generate synthetic data
     print("\n[1/4] Generating synthetic dataset (N=1500)...")
     X, y = generate_dataset(n_samples=1500)
     print(f"  Dataset shape: X={X.shape}, y={y.shape}")
     print(f"  Class distribution: {np.bincount(y)}")
     print(f"  Feature count: {X.shape[1]} (expected {len(ALL_FEATURE_NAMES)})")
 
-    # Handle any NaN/Inf values
     X = np.nan_to_num(X, nan=0.0, posinf=1.0, neginf=-1.0)
 
-    # Train GradientBoosting
     print("\n[2/4] Training GradientBoostingClassifier...")
     model = GradientBoostingClassifier(
         n_estimators=200,
@@ -280,23 +234,19 @@ def train_model():
         random_state=42,
     )
 
-    # Cross-validation
     print("\n[3/4] Running 5-fold cross-validation...")
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     cv_scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
     print(f"  CV Accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
     print(f"  Per-fold: {[f'{s:.4f}' for s in cv_scores]}")
 
-    # Train final model on full dataset
     model.fit(X, y)
 
-    # Classification report
     y_pred = model.predict(X)
     labels = ["Low Risk", "Medium Risk", "High Risk"]
     print("\n  Classification Report (training set):")
     print(classification_report(y, y_pred, target_names=labels))
 
-    # Feature importance analysis
     print("  Top 15 Most Important Features:")
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1]
@@ -304,7 +254,6 @@ def train_model():
         name = ALL_FEATURE_NAMES[idx] if idx < len(ALL_FEATURE_NAMES) else f"feature_{idx}"
         print(f"    {i+1:2d}. {name:30s} — {importances[idx]:.4f}")
 
-    # Stream-level importance
     n_h = len(HUBERT_FEATURE_NAMES)
     n_e = len(EMOTION_FEATURE_NAMES)
     n_a = len(ACOUSTIC_FEATURE_NAMES)
@@ -322,7 +271,6 @@ def train_model():
         bar = "█" * int(pct / 2)
         print(f"    {stream:30s} — {pct:5.1f}% {bar}")
 
-    # Save model
     print(f"\n[4/4] Saving model to {MODEL_PATH}...")
     joblib.dump(model, MODEL_PATH)
     print(f"  Model saved! ({os.path.getsize(MODEL_PATH) / 1024:.1f} KB)")
