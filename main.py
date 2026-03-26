@@ -11,6 +11,12 @@ from speech_transcriber import transcribe_bytes
 from text_features import extract_text_features
 from model import predict
 
+from database import engine, Base
+from routes.auth import router as auth_router
+
+# Create DB tables
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(title="Burnout Predictor API — Multimodal Late Fusion")
 
 origins = ["*"]
@@ -23,6 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 @app.get("/")
 async def root():

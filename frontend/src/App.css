@@ -10,16 +10,16 @@ body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: #0f0f1a;
     min-height: 100vh;
-    padding: 30px 20px;
+    padding: 90px 20px 30px;
     color: #e0e0e0;
 }
 
-.app-header {
+.page-header {
     text-align: center;
     margin-bottom: 32px;
 }
 
-.app-header h1 {
+.page-header h1 {
     font-size: 28px;
     font-weight: 800;
     background: linear-gradient(135deg, #7c5cfc, #c084fc, #f472b6);
@@ -29,7 +29,7 @@ body {
     letter-spacing: -0.5px;
 }
 
-.app-header .subtitle {
+.page-header .subtitle {
     color: #888;
     font-size: 13px;
     margin-top: 6px;
@@ -290,36 +290,7 @@ audio.show { display: block; }
 .model-badge { text-align: center; margin-top: 6px; }
 .model-badge span { padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; background: rgba(124, 92, 252, 0.1); color: #a78bfa; border: 1px solid rgba(124, 92, 252, 0.2); letter-spacing: 0.5px; }
 
-/* Navigation Tabs */
-.nav-tabs {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-bottom: 30px;
-}
 
-.nav-tab {
-    background: transparent;
-    border: 1px solid rgba(124, 92, 252, 0.3);
-    color: #888;
-    padding: 10px 24px;
-    border-radius: 30px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.nav-tab:hover {
-    border-color: rgba(124, 92, 252, 0.6);
-    color: #ddd;
-}
-
-.nav-tab.active {
-    background: rgba(124, 92, 252, 0.15);
-    color: #a78bfa;
-    border-color: #7c5cfc;
-}
 
 /* MBI Questionnaire */
 .mbi-container {
@@ -395,4 +366,185 @@ audio.show { display: block; }
     font-size: 12px;
     color: #666;
     cursor: pointer;
+}
+
+/* ─── Input Tabs (Upload / Record) ─── */
+.input-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.input-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 9px;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    letter-spacing: 0.2px;
+}
+
+.input-tab:hover {
+    color: #bbb;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.input-tab.active {
+    background: linear-gradient(135deg, rgba(124, 92, 252, 0.2), rgba(168, 85, 247, 0.15));
+    color: #c4b5fd;
+    box-shadow: 0 2px 12px rgba(124, 92, 252, 0.15);
+    border: 1px solid rgba(124, 92, 252, 0.25);
+}
+
+/* ─── Audio Recorder ─── */
+.audio-recorder {
+    text-align: center;
+    padding: 24px 0 16px;
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recorder-idle,
+.recorder-active,
+.recorder-done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.recorder-hint {
+    color: #aaa;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Record Button */
+.record-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 3px solid rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.08);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.record-btn:hover {
+    border-color: rgba(239, 68, 68, 0.7);
+    background: rgba(239, 68, 68, 0.12);
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+}
+
+.record-btn-inner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    display: block;
+    transition: all 0.2s ease;
+}
+
+.record-btn:hover .record-btn-inner {
+    transform: scale(1.1);
+}
+
+.record-btn-small {
+    width: 44px;
+    height: 44px;
+    margin-top: 4px;
+}
+
+.record-btn-small .record-btn-inner {
+    width: 18px;
+    height: 18px;
+}
+
+/* Stop Button */
+.stop-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    padding: 11px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    letter-spacing: 0.3px;
+}
+
+.stop-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+/* Recording Indicator */
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+}
+
+.rec-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: pulse-dot 1s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.rec-timer {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f87171;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+}
+
+/* Waveform Bars */
+.waveform-bars {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 48px;
+}
+
+.waveform-bar {
+    display: inline-block;
+    width: 4px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #ef4444, #7c5cfc);
+    animation: waveform 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes waveform {
+    0% { height: 8px; opacity: 0.4; }
+    100% { height: 40px; opacity: 1; }
 }
