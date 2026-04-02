@@ -11,7 +11,12 @@ from speech_transcriber import transcribe_bytes
 from text_features import extract_text_features
 from model import predict
 
-from database import engine, Base
+from database import engine, Base, get_db
+from models_db import User, SpeechAnalysis, MBIResult
+from schemas import MBISubmit, MBIResponse, HistoryResponse
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from auth import get_current_user, get_optional_user
 from routes.auth import router as auth_router
 
 # Create DB tables
@@ -45,7 +50,11 @@ async def root():
 
 
 @app.post("/predict")
-async def predict_burnout(file: UploadFile):
+async def predict_burnout(
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user)
+):
     try:
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file uploaded")
@@ -107,11 +116,67 @@ async def predict_burnout(file: UploadFile):
         print(f"Result: {result['label']} (score={result['score']:.3f})")
         print(f"{'='*50}\n")
 
+        if current_user:
+            db_analysis = SpeechAnalysis(
+                user_id=current_user.id,
+                filename=result["filename"],
+                file_size_bytes=result["file_size_bytes"],
+                transcript=result["transcript"],
+                label=result["label"],
+                score=result["score"],
+                acoustic_features=result["acoustic_features"]
+            )
+            db.add(db_analysis)
+            db.commit()
+            print(f"[{current_user.username}] Saved analysis to DB.")
+
         return result
 
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/mbi/submit", response_model=MBIResponse)
+async def submit_mbi(
+    payload: MBISubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        db_mbi = MBIResult(
+            user_id=current_user.id,
+            gender=payload.gender,
+            answers=payload.answers
+        )
+        db.add(db_mbi)
+        db.commit()
+        db.refresh(db_mbi)
+        return db_mbi
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/history", response_model=HistoryResponse)
+async def get_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    speech_analyses = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.user_id == current_user.id)\
+        .order_by(SpeechAnalysis.created_at.desc())\
+        .all()
+        
+    mbi_results = db.query(MBIResult)\
+        .filter(MBIResult.user_id == current_user.id)\
+        .order_by(MBIResult.created_at.desc())\
+        .all()
+
+    return {
+        "speech_analyses": speech_analyses,
+        "mbi_results": mbi_results
+    }
 
 
 if __name__ == "__main__":

@@ -25,3 +25,37 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class MBISubmit(BaseModel):
+    gender: str
+    answers: dict[str, int]
+
+
+class MBIResponse(BaseModel):
+    id: int
+    user_id: int
+    gender: str
+    answers: dict[str, int]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SpeechAnalysisResponse(BaseModel):
+    id: int
+    user_id: int
+    filename: str
+    file_size_bytes: int
+    transcript: str
+    label: str
+    score: float
+    acoustic_features: dict[str, float]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class HistoryResponse(BaseModel):
+    speech_analyses: list[SpeechAnalysisResponse]
+    mbi_results: list[MBIResponse]

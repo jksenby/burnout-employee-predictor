@@ -3,10 +3,12 @@ import AudioUpload from "../components/AudioUpload";
 import AudioRecorder from "../components/AudioRecorder";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ResultsPanel from "../components/ResultsPanel";
+import { useAuth } from "../context/AuthContext";
 
 const API_URL = "http://localhost:8000/predict";
 
 const SpeechAnalysisPage = () => {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState("upload");
   const [file, setFile] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -38,8 +40,14 @@ const SpeechAnalysisPage = () => {
       const formData = new FormData();
       formData.append("file", file);
 
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const response = await fetch(API_URL, {
         method: "POST",
+        headers,
         body: formData,
       });
 

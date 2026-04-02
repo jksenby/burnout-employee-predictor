@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const MBI_QUESTIONS = [
   "I feel emotionally drained from my work.",
@@ -25,7 +26,70 @@ const MBI_QUESTIONS = [
   "I feel that recipients blame me for some of their problems."
 ];
 
-const MBIQuestionnaire = () => (
+const MBIQuestionnaire = () => {
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (loading) return;
+
+    const formData = new FormData(e.target);
+    const gender = formData.get("gender");
+    
+    if (!gender) {
+      alert("Please select your gender.");
+      return;
+    }
+
+    const answers = {};
+    for (let i = 0; i < MBI_QUESTIONS.length; i++) {
+      const ans = formData.get(`q${i}`);
+      if (!ans) {
+        alert(`Please answer question ${i + 1}.`);
+        return;
+      }
+      answers[`q${i}`] = parseInt(ans, 10);
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/mbi/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ gender, answers })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit questionnaire");
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+        console.error(err);
+        alert(err.message);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="mbi-container" style={{ textAlign: "center", padding: "40px" }}>
+        <h2>Thank You!</h2>
+        <p style={{ color: "#aaa" }}>Your MBI assessment has been successfully recorded.</p>
+        <button className="button" style={{ marginTop: '20px' }} onClick={() => setSubmitted(false)}>
+          Take another assessment
+        </button>
+      </div>
+    );
+  }
+
+  return (
   <div className="mbi-container">
     <div className="mbi-intro">
       <p>Please read each statement carefully and decide if you ever feel this way about your job.</p>
@@ -42,7 +106,7 @@ const MBIQuestionnaire = () => (
       <div><strong>6</strong><br/>Every day</div>
     </div>
 
-    <form onSubmit={(e) => e.preventDefault()}>
+    <form onSubmit={handleSubmit}>
       <div className="mbi-question-item">
         <div className="mbi-question-text">Your Gender</div>
         <div style={{ display: 'flex', gap: '24px' }}>
@@ -67,9 +131,11 @@ const MBIQuestionnaire = () => (
           </div>
         </div>
       ))}
-      <button className="button" style={{ marginTop: '20px' }}>Submit Assessment</button>
+      <button type="submit" className="button" style={{ marginTop: '20px' }} disabled={loading}>
+        {loading ? "Submitting..." : "Submit Assessment"}
+      </button>
     </form>
   </div>
-);
+)};
 
 export default MBIQuestionnaire;
