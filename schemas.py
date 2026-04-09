@@ -7,6 +7,9 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
+    gender: str
+    phone_number: str
+    age: int
 
 
 class UserLogin(BaseModel):
@@ -18,9 +21,18 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    gender: str
+    phone_number: str
+    age: int
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserUpdate(BaseModel):
+    gender: Optional[str] = None
+    phone_number: Optional[str] = None
+    age: Optional[int] = None
 
 
 class Token(BaseModel):

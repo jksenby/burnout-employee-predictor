@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models_db import User
-from schemas import UserCreate, UserLogin, UserResponse, Token
+from schemas import UserCreate, UserLogin, UserResponse, UserUpdate, Token
 from auth import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter()
@@ -29,6 +29,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         username=user_data.username,
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
+        gender=user_data.gender,
+        phone_number=user_data.phone_number,
+        age=user_data.age,
     )
     db.add(user)
     db.commit()
@@ -54,4 +57,22 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     """Получить данные текущего пользователя (требуется токен)."""
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update current user's profile fields."""
+    if payload.gender is not None:
+        current_user.gender = payload.gender
+    if payload.phone_number is not None:
+        current_user.phone_number = payload.phone_number
+    if payload.age is not None:
+        current_user.age = payload.age
+    db.commit()
+    db.refresh(current_user)
     return current_user

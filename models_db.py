@@ -12,6 +12,9 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    gender = Column(String, nullable=False)
+    phone_number = Column(String, nullable=False)
+    age = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     speech_analyses = relationship("SpeechAnalysis", back_populates="user")
