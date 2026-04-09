@@ -29,6 +29,15 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
+              <span className="nav-link-icon">📊</span>
+              <span>Dashboard</span>
+            </NavLink>
+            <NavLink
+              to="/speech"
+              className={({ isActive }) =>
+                `nav-link ${isActive ? "active" : ""}`
+              }
+            >
               <span className="nav-link-icon">🎙️</span>
               <span>Speech Analysis</span>
             </NavLink>
@@ -47,8 +56,8 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
-              <span className="nav-link-icon">📊</span>
-              <span>My History</span>
+              <span className="nav-link-icon">🕘</span>
+              <span>History</span>
             </NavLink>
           </div>
         )}

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
+import DashboardPage from "./pages/DashboardPage";
 import SpeechAnalysisPage from "./pages/SpeechAnalysisPage";
 import MBIPage from "./pages/MBIPage";
 import AuthPage from "./pages/AuthPage";
@@ -23,6 +24,14 @@ function AppRoutes() {
           <Route path="/auth" element={<AuthPage />} />
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/speech"
             element={
               <ProtectedRoute>
                 <SpeechAnalysisPage />

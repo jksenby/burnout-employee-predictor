@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 
 class UserCreate(BaseModel):
@@ -59,3 +60,15 @@ class SpeechAnalysisResponse(BaseModel):
 class HistoryResponse(BaseModel):
     speech_analyses: list[SpeechAnalysisResponse]
     mbi_results: list[MBIResponse]
+
+
+class ScheduleResponse(BaseModel):
+    mbi_due: bool
+    speech_due: bool
+    mbi_last_date: Optional[datetime] = None
+    speech_last_date: Optional[datetime] = None
+    mbi_next_date: str
+    speech_next_date: str
+    mbi_days_remaining: int
+    speech_days_remaining: int
+    today_task: Optional[str] = None  # "mbi", "speech", or null

@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import traceback
+from datetime import datetime, timezone, timedelta
 
 from hubert import extract_hubert_embedding
 from wavlm import extract_embedding as extract_wavlm_embedding
@@ -13,7 +14,7 @@ from model import predict
 
 from database import engine, Base, get_db
 from models_db import User, SpeechAnalysis, MBIResult
-from schemas import MBISubmit, MBIResponse, HistoryResponse
+from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from auth import get_current_user, get_optional_user
@@ -156,6 +157,77 @@ async def submit_mbi(
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+MBI_CYCLE_DAYS = 30
+SPEECH_CYCLE_DAYS = 7
+
+
+@app.get("/schedule", response_model=ScheduleResponse)
+async def get_schedule(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    now = datetime.now(timezone.utc)
+
+    last_mbi = db.query(MBIResult)\
+        .filter(MBIResult.user_id == current_user.id)\
+        .order_by(MBIResult.created_at.desc())\
+        .first()
+
+    last_speech = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.user_id == current_user.id)\
+        .order_by(SpeechAnalysis.created_at.desc())\
+        .first()
+
+    # MBI schedule
+    if last_mbi and last_mbi.created_at:
+        mbi_last = last_mbi.created_at.replace(tzinfo=timezone.utc) if last_mbi.created_at.tzinfo is None else last_mbi.created_at
+        mbi_days_since = (now - mbi_last).days
+        mbi_days_remaining = max(0, MBI_CYCLE_DAYS - mbi_days_since)
+        mbi_due = mbi_days_since >= MBI_CYCLE_DAYS
+        mbi_next = (mbi_last + timedelta(days=MBI_CYCLE_DAYS)).strftime("%Y-%m-%d")
+        mbi_last_date = last_mbi.created_at
+    else:
+        mbi_due = True
+        mbi_days_remaining = 0
+        mbi_next = now.strftime("%Y-%m-%d")
+        mbi_last_date = None
+
+    # Speech schedule
+    if last_speech and last_speech.created_at:
+        speech_last = last_speech.created_at.replace(tzinfo=timezone.utc) if last_speech.created_at.tzinfo is None else last_speech.created_at
+        speech_days_since = (now - speech_last).days
+        speech_days_remaining = max(0, SPEECH_CYCLE_DAYS - speech_days_since)
+        speech_due = speech_days_since >= SPEECH_CYCLE_DAYS
+        speech_next = (speech_last + timedelta(days=SPEECH_CYCLE_DAYS)).strftime("%Y-%m-%d")
+        speech_last_date = last_speech.created_at
+    else:
+        speech_due = True
+        speech_days_remaining = 0
+        speech_next = now.strftime("%Y-%m-%d")
+        speech_last_date = None
+
+    # Priority: MBI > Speech
+    today_task = None
+    if mbi_due and speech_due:
+        today_task = "mbi"
+    elif mbi_due:
+        today_task = "mbi"
+    elif speech_due:
+        today_task = "speech"
+
+    return ScheduleResponse(
+        mbi_due=mbi_due,
+        speech_due=speech_due,
+        mbi_last_date=mbi_last_date,
+        speech_last_date=speech_last_date,
+        mbi_next_date=mbi_next,
+        speech_next_date=speech_next,
+        mbi_days_remaining=mbi_days_remaining,
+        speech_days_remaining=speech_days_remaining,
+        today_task=today_task
+    )
 
 
 @app.get("/history", response_model=HistoryResponse)
