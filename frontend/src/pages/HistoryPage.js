@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ResultsPanel from "../components/ResultsPanel";
+import HistoryTable from "../components/HistoryTable";
 
 const HistoryPage = () => {
   const { token } = useAuth();
@@ -71,31 +72,7 @@ const HistoryPage = () => {
         {/* Speech Records */}
         <section>
           <h2 style={{ color: "#fff", marginBottom: "20px", borderBottom: "1px solid #333", paddingBottom: "10px" }}>🎙️ Speech Analyses</h2>
-          {history.speech_analyses.length === 0 ? (
-            <p style={{ color: "#888" }}>No speech analyses recorded yet.</p>
-          ) : (
-            <div style={{ display: "grid", gap: "16px", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
-              {history.speech_analyses.map((rec) => (
-                <div 
-                  key={rec.id} 
-                  className="upload-card" 
-                  style={{ cursor: "pointer", padding: "20px", transition: "all 0.2s" }}
-                  onClick={() => setActiveSpeechResult(rec)}
-                >
-                  <p style={{ fontSize: "12px", color: "#888", marginBottom: "8px" }}>
-                    {new Date(rec.created_at).toLocaleString()}
-                  </p>
-                  <h3 style={{ color: "white", marginBottom: "8px" }}>Burnout Risk: {(rec.score * 100).toFixed(1)}%</h3>
-                  <div className="streams-badge" style={{ marginBottom: "12px", justifyContent: "flex-start" }}>
-                    <span className="stream-chip hubert">{rec.label}</span>
-                  </div>
-                  <p style={{ fontSize: "14px", color: "#ccc", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    "{rec.transcript}"
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+          <HistoryTable data={history.speech_analyses} onRowClick={setActiveSpeechResult} />
         </section>
 
         {/* MBI Records */}
