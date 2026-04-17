@@ -63,6 +63,12 @@ class SpeechAnalysisResponse(BaseModel):
     transcript: str
     label: str
     score: float
+    confidence: float
+    probabilities: dict[str, float]
+    stream_contributions: dict[str, float]
+    emotions: dict[str, float]
+    dominant_emotion: str
+    text_analysis: dict[str, float | int]
     acoustic_features: dict[str, float]
     created_at: datetime
 

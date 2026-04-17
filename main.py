@@ -14,7 +14,7 @@ from model import predict
 
 from database import engine, Base, get_db
 from models_db import User, SpeechAnalysis, MBIResult
-from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse
+from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse, SpeechAnalysisResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from auth import get_current_user, get_optional_user
@@ -125,6 +125,12 @@ async def predict_burnout(
                 transcript=result["transcript"],
                 label=result["label"],
                 score=result["score"],
+                confidence=result.get("confidence", 0.0),
+                probabilities=result.get("probabilities", {}),
+                stream_contributions=result.get("stream_contributions", {}),
+                emotions=result.get("emotions", {}),
+                dominant_emotion=result.get("dominant_emotion", "unknown"),
+                text_analysis=result.get("text_analysis", {}),
                 acoustic_features=result["acoustic_features"]
             )
             db.add(db_analysis)
@@ -228,6 +234,22 @@ async def get_schedule(
         speech_days_remaining=speech_days_remaining,
         today_task=today_task
     )
+
+
+@app.get("/history/speech/{analysis_id}", response_model=SpeechAnalysisResponse)
+async def get_speech_analysis(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    analysis = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.id == analysis_id, SpeechAnalysis.user_id == current_user.id)\
+        .first()
+    
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+        
+    return analysis
 
 
 @app.get("/history", response_model=HistoryResponse)

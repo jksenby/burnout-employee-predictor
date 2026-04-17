@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LoadingIndicator from "../components/LoadingIndicator";
-import ResultsPanel from "../components/ResultsPanel";
 import HistoryTable from "../components/HistoryTable";
 
 const HistoryPage = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [history, setHistory] = useState({
     speech_analyses: [],
     mbi_results: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [activeSpeechResult, setActiveSpeechResult] = useState(null);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -61,26 +60,9 @@ const HistoryPage = () => {
         </p>
       </div>
 
-      {activeSpeechResult && (
-        <div style={{ marginBottom: "40px" }}>
-          <button
-            className="button"
-            style={{ marginBottom: "20px" }}
-            onClick={() => setActiveSpeechResult(null)}
-          >
-            ← Back to History
-          </button>
-          <h3>
-            Displaying Past Result:{" "}
-            {new Date(activeSpeechResult.created_at).toLocaleString()}
-          </h3>
-          <ResultsPanel data={activeSpeechResult} />
-        </div>
-      )}
-
       <div
         style={{
-          display: activeSpeechResult ? "none" : "flex",
+          display: "flex",
           flexDirection: "column",
           gap: "40px",
         }}
@@ -98,7 +80,7 @@ const HistoryPage = () => {
           </h2>
           <HistoryTable
             data={history.speech_analyses}
-            onRowClick={setActiveSpeechResult}
+            onRowClick={(rec) => navigate(`/history/${rec.id}`)}
           />
         </section>
 

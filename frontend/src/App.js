@@ -56,6 +56,14 @@ function AppRoutes() {
             }
           />
           <Route
+            path="/history/:id"
+            element={
+              <ProtectedRoute>
+                <SpeechAnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/profile"
             element={
               <ProtectedRoute>

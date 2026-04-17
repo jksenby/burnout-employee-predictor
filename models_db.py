@@ -31,6 +31,12 @@ class SpeechAnalysis(Base):
     transcript = Column(String)
     label = Column(String)
     score = Column(Float)
+    confidence = Column(Float)
+    probabilities = Column(JSON)
+    stream_contributions = Column(JSON)
+    emotions = Column(JSON)
+    dominant_emotion = Column(String)
+    text_analysis = Column(JSON)
     acoustic_features = Column(JSON)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
