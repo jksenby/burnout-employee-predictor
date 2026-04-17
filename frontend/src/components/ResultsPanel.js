@@ -61,7 +61,7 @@ const ResultsPanel = ({ data }) => {
       <div className="panels-grid">
         <div className="panel acoustic">
           <div className="panel-header">
-            <span className="panel-icon">🔊</span>
+            <span className="panel-icon"><i className="fa-solid fa-volume-high"></i></span>
             <span className="panel-title">Acoustic Analysis</span>
           </div>
           <div>
@@ -79,7 +79,7 @@ const ResultsPanel = ({ data }) => {
 
         <div className="panel emotion">
           <div className="panel-header">
-            <span className="panel-icon">😶</span>
+            <span className="panel-icon"><i className="fa-solid fa-face-meh"></i></span>
             <span className="panel-title">Emotion Analysis</span>
           </div>
           <div>
@@ -103,7 +103,7 @@ const ResultsPanel = ({ data }) => {
 
         <div className="panel linguistic">
           <div className="panel-header">
-            <span className="panel-icon">📝</span>
+            <span className="panel-icon"><i className="fa-solid fa-pen-nib"></i></span>
             <span className="panel-title">Linguistic Analysis</span>
           </div>
           <div>
@@ -120,7 +120,7 @@ const ResultsPanel = ({ data }) => {
 
         <div className="panel stream">
           <div className="panel-header">
-            <span className="panel-icon">📊</span>
+            <span className="panel-icon"><i className="fa-solid fa-chart-pie"></i></span>
             <span className="panel-title">Stream Contributions</span>
           </div>
           <div>
@@ -144,7 +144,7 @@ const ResultsPanel = ({ data }) => {
 
       <div className="transcript-panel">
         <div className="panel-header">
-          <span className="panel-icon">💬</span>
+          <span className="panel-icon"><i className="fa-solid fa-comment-dots"></i></span>
           <span className="panel-title" style={{ color: '#67e8f9' }}>Whisper Transcript</span>
         </div>
         <div className="transcript-text">{transcript || '—'}</div>

@@ -73,7 +73,9 @@ const DashboardPage = () => {
         <div className="dash-hero-content">
           {allClear ? (
             <>
-              <div className="dash-hero-icon">✅</div>
+              <div className="dash-hero-icon">
+                <i className="fa-solid fa-circle-check"></i>
+              </div>
               <h2 className="dash-hero-title">You're All Caught Up!</h2>
               <p className="dash-hero-desc">
                 No assessments are due right now. Keep up the great work!
@@ -82,7 +84,11 @@ const DashboardPage = () => {
           ) : (
             <>
               <div className="dash-hero-icon">
-                {schedule.today_task === "mbi" ? "📋" : "🎙️"}
+                {schedule.today_task === "mbi" ? (
+                  <i className="fa-solid fa-clipboard-list"></i>
+                ) : (
+                  <i className="fa-solid fa-microphone"></i>
+                )}
               </div>
               <h2 className="dash-hero-title">
                 {schedule.today_task === "mbi"
@@ -133,7 +139,7 @@ const DashboardPage = () => {
         <div className={`dash-card ${schedule.mbi_due ? "due" : ""}`}>
           <div className="dash-card-header">
             <div className="dash-card-icon-wrap mbi">
-              <span>📋</span>
+              <i className="fa-solid fa-clipboard-list"></i>
             </div>
             <div>
               <h3 className="dash-card-title">MBI Questionnaire</h3>
@@ -188,7 +194,7 @@ const DashboardPage = () => {
         <div className={`dash-card ${schedule.speech_due ? "due" : ""}`}>
           <div className="dash-card-header">
             <div className="dash-card-icon-wrap speech">
-              <span>🎙️</span>
+              <i className="fa-solid fa-microphone"></i>
             </div>
             <div>
               <h3 className="dash-card-title">Speech Analysis</h3>
@@ -247,7 +253,9 @@ const DashboardPage = () => {
 
       {/* ── Priority Note ── */}
       <div className="dash-priority-note">
-        <div className="dash-priority-icon">💡</div>
+        <div className="dash-priority-icon">
+          <i className="fa-solid fa-lightbulb"></i>
+        </div>
         <div>
           <strong>Scheduling Priority</strong>
           <p>

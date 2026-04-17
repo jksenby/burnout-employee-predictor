@@ -40,7 +40,7 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
-        <div className="upload-icon">🎙️</div>
+        <div className="upload-icon"><i className="fa-solid fa-microphone"></i></div>
         <p><strong>Click to upload</strong> or drag & drop</p>
         <p className="hint">WAV, MP3, FLAC — 5-60 seconds of speech</p>
         <input
@@ -53,7 +53,7 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
 
       {file && (
         <div className="file-info show">
-          <strong>📄 {file.name}</strong> &nbsp;·&nbsp; {(file.size / (1024 * 1024)).toFixed(2)} MB &nbsp;·&nbsp; {file.type || 'audio'}
+          <strong><i className="fa-solid fa-file-audio"></i> {file.name}</strong> &nbsp;·&nbsp; {(file.size / (1024 * 1024)).toFixed(2)} MB &nbsp;·&nbsp; {file.type || 'audio'}
         </div>
       )}
 
@@ -66,7 +66,7 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
         disabled={!file || loading}
         onClick={onAnalyze}
       >
-        🔍 Analyze Speech
+        <i class="fa-solid fa-magnifying-glass"></i> Analyze Speech
       </button>
     </div>
   );

@@ -16,7 +16,9 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-inner">
         <div className="navbar-brand">
-          <span className="brand-icon">🔥</span>
+          <span className="brand-icon">
+            <i className="fa-solid fa-fire-flame-curved"></i>
+          </span>
           <span className="brand-text">Burnout Predictor</span>
         </div>
 
@@ -29,7 +31,9 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
-              <span className="nav-link-icon">📊</span>
+              <span className="nav-link-icon">
+                <i className="fa-solid fa-chart-simple"></i>
+              </span>
               <span>Dashboard</span>
             </NavLink>
             <NavLink
@@ -38,7 +42,9 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
-              <span className="nav-link-icon">🎙️</span>
+              <span className="nav-link-icon">
+                <i className="fa-solid fa-microphone"></i>
+              </span>
               <span>Speech Analysis</span>
             </NavLink>
             <NavLink
@@ -47,7 +53,9 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
-              <span className="nav-link-icon">📋</span>
+              <span className="nav-link-icon">
+                <i className="fa-solid fa-clipboard-list"></i>
+              </span>
               <span>MBI Questionnaire</span>
             </NavLink>
             <NavLink
@@ -56,7 +64,9 @@ const Navbar = () => {
                 `nav-link ${isActive ? "active" : ""}`
               }
             >
-              <span className="nav-link-icon">🕘</span>
+              <span className="nav-link-icon">
+                <i className="fa-solid fa-clock-rotate-left"></i>
+              </span>
               <span>History</span>
             </NavLink>
           </div>

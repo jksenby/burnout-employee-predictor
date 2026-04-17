@@ -156,7 +156,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => 
               <span className="rec-timer">{formatTime(elapsed)}</span>
             </div>
             <button className="stop-btn" onClick={stopRecording} type="button">
-              ■ Stop Recording
+              <i className="fa-solid fa-stop"></i> Stop Recording
             </button>
           </div>
         )}
@@ -164,7 +164,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => 
         {!isRecording && file && (
           <div className="recorder-done">
             <div className="file-info show">
-              <strong>🎤 {file.name}</strong> &nbsp;·&nbsp; {(file.size / (1024 * 1024)).toFixed(2)} MB
+              <strong><i className="fa-solid fa-microphone-lines"></i> {file.name}</strong> &nbsp;·&nbsp; {(file.size / (1024 * 1024)).toFixed(2)} MB
             </div>
             {audioUrl && <audio src={audioUrl} controls className="show" />}
             <button className="record-btn record-btn-small" onClick={startRecording} type="button" title="Record again">
@@ -179,7 +179,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => 
         disabled={!file || loading}
         onClick={onAnalyze}
       >
-        🔍 Analyze Speech
+        <i class="fa-solid fa-magnifying-glass"></i> Analyze Speech
       </button>
     </div>
   );

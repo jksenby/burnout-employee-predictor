@@ -9,8 +9,13 @@ export const capitalize = (str) =>
   !str ? "—" : str.charAt(0).toUpperCase() + str.slice(1);
 
 export const emotionIcon = (name) => {
-  const icons = { angry: "😠", happy: "😊", sad: "😢", neutral: "😐" };
-  return icons[name] || "🔵";
+  const icons = {
+    angry: <i className="fa-solid fa-face-angry"></i>,
+    happy: <i className="fa-solid fa-face-smile"></i>,
+    sad: <i className="fa-solid fa-face-sad-tear"></i>,
+    neutral: <i className="fa-solid fa-face-meh"></i>
+  };
+  return icons[name] || <i className="fa-solid fa-circle"></i>;
 };
 
 export const formatSentiment = (v) => {
