@@ -36,13 +36,6 @@ const MBIQuestionnaire = () => {
     if (loading) return;
 
     const formData = new FormData(e.target);
-    const gender = formData.get("gender");
-    
-    if (!gender) {
-      alert("Please select your gender.");
-      return;
-    }
-
     const answers = {};
     for (let i = 0; i < MBI_QUESTIONS.length; i++) {
       const ans = formData.get(`q${i}`);
@@ -61,7 +54,7 @@ const MBIQuestionnaire = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ gender, answers })
+        body: JSON.stringify({ answers })
       });
 
       if (!response.ok) {
@@ -107,17 +100,6 @@ const MBIQuestionnaire = () => {
     </div>
 
     <form onSubmit={handleSubmit}>
-      <div className="mbi-question-item">
-        <div className="mbi-question-text">Your Gender</div>
-        <div style={{ display: 'flex', gap: '24px' }}>
-          <label style={{ color: '#ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-            <input type="radio" name="gender" value="male" style={{ marginRight: '8px', width: '16px', height: '16px', accentColor: '#7c5cfc' }} /> Male
-          </label>
-          <label style={{ color: '#ccc', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-            <input type="radio" name="gender" value="female" style={{ marginRight: '8px', width: '16px', height: '16px', accentColor: '#7c5cfc' }} /> Female
-          </label>
-        </div>
-      </div>
       {MBI_QUESTIONS.map((q, idx) => (
         <div key={idx} className="mbi-question-item">
           <div className="mbi-question-text">{idx + 1}. {q}</div>

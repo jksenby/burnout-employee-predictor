@@ -50,6 +50,11 @@ class MBIResult(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     gender = Column(String)
     answers = Column(JSON)
+    emotional_exhaustion = Column(Integer)
+    depersonalization = Column(Integer)
+    personal_accomplishment = Column(Integer)
+    reduction_of_achievements = Column(Integer)
+    burnout_index = Column(Float)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="mbi_results")

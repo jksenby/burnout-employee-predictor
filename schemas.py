@@ -41,7 +41,6 @@ class Token(BaseModel):
 
 
 class MBISubmit(BaseModel):
-    gender: str
     answers: dict[str, int]
 
 
@@ -50,6 +49,11 @@ class MBIResponse(BaseModel):
     user_id: int
     gender: str
     answers: dict[str, int]
+    emotional_exhaustion: int
+    depersonalization: int
+    personal_accomplishment: int
+    reduction_of_achievements: int
+    burnout_index: float
     created_at: datetime
 
     model_config = {"from_attributes": True}

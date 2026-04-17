@@ -151,10 +151,34 @@ async def submit_mbi(
     current_user: User = Depends(get_current_user)
 ):
     try:
+        answers = payload.answers
+        
+        # Subscales indices (0-based)
+        ee_indices = [0, 1, 2, 5, 7, 12, 13, 15, 19]
+        dp_indices = [4, 9, 10, 14, 21]
+        pa_indices = [3, 6, 8, 11, 16, 17, 18, 20]
+        
+        ee_score = sum(answers.get(f"q{i}", 0) for i in ee_indices)
+        dp_score = sum(answers.get(f"q{i}", 0) for i in dp_indices)
+        pa_score = sum(answers.get(f"q{i}", 0) for i in pa_indices)
+        
+        reduction_score = 48 - pa_score
+        
+        # Systemic Burnout Syndrome Index (geometric formula)
+        # SBSI = sqrt((EE/54)^2 + (DP/30)^2 + ((48-PA)/48)^2) / sqrt(3)
+        sbsi = (
+            ((ee_score / 54) ** 2 + (dp_score / 30) ** 2 + (reduction_score / 48) ** 2) / 3
+        ) ** 0.5
+
         db_mbi = MBIResult(
             user_id=current_user.id,
-            gender=payload.gender,
-            answers=payload.answers
+            gender=current_user.gender, # Taken from profile
+            answers=answers,
+            emotional_exhaustion=ee_score,
+            depersonalization=dp_score,
+            personal_accomplishment=pa_score,
+            reduction_of_achievements=reduction_score,
+            burnout_index=sbsi
         )
         db.add(db_mbi)
         db.commit()
