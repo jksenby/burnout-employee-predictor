@@ -48,6 +48,14 @@ async function convertToWav(blob) {
   return audioBufferToWav(audioBuffer);
 }
 
+const READING_TEXT = {
+  title: "Северный ветер и Солнце",
+  content: [
+    "Северный ветер и Солнце затеяли спор о том, кто из них сильнее. В это время по дороге шёл путник, закутанный в тёплый плащ. Они договорились, что тот, кто первым заставит путника снять плащ, будет считаться самым сильным.",
+    "Северный ветер начал дуть изо всех сил, но чем сильнее он дул, тем плотнее путник закутывался в свой плащ. Наконец ветер сдался. Тогда Солнце вышло из-за туч, ласково улыбнулось путнику и согрело землю. Путнику стало жарко, и он сам снял свой плащ. Так Солнце победило Северный ветер."
+  ]
+};
+
 const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -133,6 +141,15 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => 
 
   return (
     <div className="upload-card">
+      <div className="reading-passage">
+        <h3><i className="fa-solid fa-book-open"></i> {READING_TEXT.title}</h3>
+        <div className="reading-text">
+          {READING_TEXT.content.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
+      </div>
+
       <div className="audio-recorder">
         {!isRecording && !file && (
           <div className="recorder-idle">

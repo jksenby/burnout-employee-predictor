@@ -12,7 +12,7 @@ def _load_model():
     global _whisper_model
     if _whisper_model is None:
         print("Loading Whisper model...")
-        _whisper_model = whisper.load_model("base")
+        _whisper_model = whisper.load_model("large-v3")
         print("Whisper model loaded")
     return _whisper_model
 
