@@ -5,7 +5,7 @@ const LoadingIndicator = () => (
     <div className="spinner"></div>
     <p>Running multimodal analysis...</p>
     <div className="step-indicator">
-      Processing through HuBERT → WavLM → Whisper pipeline
+      Processing through HuBERT → WavLM → Faster-Whisper pipeline
     </div>
   </div>
 );

@@ -263,7 +263,7 @@ def train_model():
         "HuBERT Acoustic": np.sum(importances[:n_h]),
         "Emotion (SER)": np.sum(importances[n_h:n_h + n_e]),
         "WavLM Prosody + Acoustic": np.sum(importances[n_h + n_e:n_h + n_e + n_a]),
-        "Whisper Linguistic": np.sum(importances[n_h + n_e + n_a:]),
+        "Faster-Whisper Linguistic": np.sum(importances[n_h + n_e + n_a:]),
     }
     print("\n  Stream-Level Importance:")
     for stream, imp in stream_imp.items():

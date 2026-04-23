@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Float, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -26,6 +26,9 @@ class SpeechAnalysis(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    fatigue_level = Column(Integer, nullable=True)
+    stress_events = Column(Boolean, nullable=True)
+    week_number = Column(Integer, nullable=True)
     filename = Column(String)
     file_size_bytes = Column(Integer)
     transcript = Column(String)

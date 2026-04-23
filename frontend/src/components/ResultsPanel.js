@@ -9,7 +9,7 @@ const STREAM_CONFIG = [
   { key: 'hubert_acoustic', label: 'HuBERT Acoustic', cls: 'hubert' },
   { key: 'emotion', label: 'Emotion (SER)', cls: 'emotion' },
   { key: 'wavlm_prosody', label: 'WavLM Prosody', cls: 'wavlm' },
-  { key: 'whisper_linguistic', label: 'Whisper Linguistic', cls: 'linguistic' },
+  { key: 'faster_whisper_linguistic', label: 'Faster-Whisper Linguistic', cls: 'linguistic' },
 ];
 
 const ResultsPanel = ({ data }) => {
@@ -145,7 +145,7 @@ const ResultsPanel = ({ data }) => {
       <div className="transcript-panel">
         <div className="panel-header">
           <span className="panel-icon"><i className="fa-solid fa-comment-dots"></i></span>
-          <span className="panel-title" style={{ color: '#67e8f9' }}>Whisper Transcript</span>
+          <span className="panel-title" style={{ color: '#67e8f9' }}>Faster-Whisper Transcript</span>
         </div>
         <div className="transcript-text">{transcript || '—'}</div>
       </div>

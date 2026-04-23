@@ -1,9 +1,31 @@
-import whisper
+import os
+import shutil
+
+# ── Windows symlink fix ──────────────────────────────────────────────────────
+# Windows requires Developer Mode or admin rights to create symlinks.
+# HuggingFace Hub uses symlinks internally for its cache system.
+# We patch os.symlink to fall back to a plain file copy on failure,
+# so the HF cache works without any special Windows permissions.
+_orig_symlink = os.symlink
+
+
+def _safe_symlink(src, dst, target_is_directory=False, dir_fd=None):
+    try:
+        _orig_symlink(src, dst, target_is_directory=target_is_directory, dir_fd=dir_fd)
+    except OSError:
+        # Resolve relative symlink src (HF uses relative paths like ../../blobs/...)
+        if not os.path.isabs(src):
+            src = os.path.normpath(os.path.join(os.path.dirname(dst), src))
+        shutil.copy2(src, dst)
+
+
+os.symlink = _safe_symlink
+# ────────────────────────────────────────────────────────────────────────────
+
+from faster_whisper import WhisperModel
 import numpy as np
 import soundfile as sf
 import io
-import tempfile
-import os
 
 _whisper_model = None
 
@@ -11,9 +33,9 @@ _whisper_model = None
 def _load_model():
     global _whisper_model
     if _whisper_model is None:
-        print("Loading Whisper model...")
-        _whisper_model = whisper.load_model("large-v3")
-        print("Whisper model loaded")
+        print("Loading Faster-Whisper model (large-v3)...")
+        _whisper_model = WhisperModel("large-v3", device="auto", compute_type="float32")
+        print("Faster-Whisper model loaded")
     return _whisper_model
 
 
@@ -40,10 +62,10 @@ def transcribe_bytes(audio_bytes: bytes) -> str:
 
         audio = _load_audio_from_bytes(audio_bytes, target_sr=16000)
 
-        result = model.transcribe(audio, fp16=False)
-        text = result["text"].strip()
+        segments, info = model.transcribe(audio, beam_size=5)
+        text = " ".join([segment.text for segment in segments]).strip()
 
-        print(f"Whisper transcription ({len(text.split())} words): "
+        print(f"Faster-Whisper transcription ({len(text.split())} words): "
               f"{text[:80]}{'...' if len(text) > 80 else ''}")
 
         return text

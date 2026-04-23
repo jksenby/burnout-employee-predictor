@@ -17,6 +17,9 @@ const SpeechAnalysisPage = () => {
   const [audioUrl, setAudioUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
+  const [questions, setQuestions] = useState(null);
+  const [fatigueLevel, setFatigueLevel] = useState(5);
+  const [stressEvents, setStressEvents] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -39,6 +42,21 @@ const SpeechAnalysisPage = () => {
         }
       };
       fetchHistorical();
+    } else if (!id && token) {
+      const fetchQuestions = async () => {
+        try {
+          const res = await fetch(`http://localhost:8000/interview/questions`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const result = await res.json();
+            setQuestions(result);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      fetchQuestions();
     }
   }, [id, token, navigate]);
 
@@ -66,6 +84,11 @@ const SpeechAnalysisPage = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("fatigue_level", fatigueLevel);
+      formData.append("stress_events", stressEvents);
+      if (questions) {
+        formData.append("week_number", questions.week_number);
+      }
 
       const headers = {};
       if (token) {
@@ -103,7 +126,7 @@ const SpeechAnalysisPage = () => {
         <div className="streams-badge">
           <span className="stream-chip hubert">HuBERT — Acoustics</span>
           <span className="stream-chip wavlm">WavLM — Prosody</span>
-          <span className="stream-chip whisper">Whisper — Semantics</span>
+          <span className="stream-chip whisper">Faster-Whisper — Semantics</span>
         </div>
       </div>
 
@@ -144,6 +167,39 @@ const SpeechAnalysisPage = () => {
             </button>
           </div>
 
+          <div className="self-report-form" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "rgba(255, 255, 255, 0.05)", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+            <h3 style={{ marginBottom: "15px", fontSize: "16px", color: "#fff" }}><i className="fa-solid fa-clipboard-user"></i> Самооценка перед записью</h3>
+            
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", marginBottom: "8px", color: "#ccc" }}>
+                Ваш уровень усталости сегодня (1-10): <span style={{ fontWeight: "bold", color: "#00d2ff", fontSize: "18px", marginLeft: "10px" }}>{fatigueLevel}</span>
+              </label>
+              <input 
+                type="range" 
+                min="1" max="10" 
+                value={fatigueLevel} 
+                onChange={(e) => setFatigueLevel(e.target.value)}
+                style={{ width: "100%", accentColor: "#00d2ff" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#888", marginTop: "5px" }}>
+                <span>1 - Полон сил</span>
+                <span>10 - Полностью истощён</span>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer", color: "#ccc" }}>
+                <input 
+                  type="checkbox" 
+                  checked={stressEvents} 
+                  onChange={(e) => setStressEvents(e.target.checked)}
+                  style={{ marginRight: "12px", width: "18px", height: "18px", accentColor: "#00d2ff" }}
+                />
+                Были ли у вас сильные стрессовые события на этой неделе?
+              </label>
+            </div>
+          </div>
+
           {activeTab === "upload" ? (
             <AudioUpload
               file={file}
@@ -159,6 +215,7 @@ const SpeechAnalysisPage = () => {
               loading={loading}
               onFileSelect={handleFileSelect}
               onAnalyze={handleAnalyze}
+              questions={questions}
             />
           )}
         </>

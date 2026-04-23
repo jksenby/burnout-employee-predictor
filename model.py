@@ -166,7 +166,7 @@ class BurnoutMultimodalClassifier:
             "wavlm_prosody": float(np.sum(importances[
                 n_hubert + n_emotion:n_hubert + n_emotion + n_acoustic
             ])),
-            "whisper_linguistic": float(np.sum(importances[
+            "faster_whisper_linguistic": float(np.sum(importances[
                 n_hubert + n_emotion + n_acoustic:
             ])),
         }
@@ -265,7 +265,7 @@ class BurnoutMultimodalClassifier:
             "hubert_acoustic": 25.0,
             "emotion": 20.0,
             "wavlm_prosody": 40.0,
-            "whisper_linguistic": 15.0,
+            "faster_whisper_linguistic": 15.0,
         }
 
         result = {

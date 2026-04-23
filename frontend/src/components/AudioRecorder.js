@@ -48,15 +48,9 @@ async function convertToWav(blob) {
   return audioBufferToWav(audioBuffer);
 }
 
-const READING_TEXT = {
-  title: "Северный ветер и Солнце",
-  content: [
-    "Северный ветер и Солнце затеяли спор о том, кто из них сильнее. В это время по дороге шёл путник, закутанный в тёплый плащ. Они договорились, что тот, кто первым заставит путника снять плащ, будет считаться самым сильным.",
-    "Северный ветер начал дуть изо всех сил, но чем сильнее он дул, тем плотнее путник закутывался в свой плащ. Наконец ветер сдался. Тогда Солнце вышло из-за туч, ласково улыбнулось путнику и согрело землю. Путнику стало жарко, и он сам снял свой плащ. Так Солнце победило Северный ветер."
-  ]
-};
+// Removed READING_TEXT
 
-const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
+const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, questions }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -142,11 +136,19 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => 
   return (
     <div className="upload-card">
       <div className="reading-passage">
-        <h3><i className="fa-solid fa-book-open"></i> {READING_TEXT.title}</h3>
-        <div className="reading-text">
-          {READING_TEXT.content.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+        <h3><i className="fa-solid fa-clipboard-question"></i> Интервью (Неделя {questions?.week_number || 1})</h3>
+        <p className="hint" style={{marginBottom: "15px"}}>Пожалуйста, ответьте на эти вопросы в своей записи (рекомендуется 30–60 сек).</p>
+        
+        <div className="interview-questions" style={{ textAlign: "left", fontSize: "15px" }}>
+          <h4 style={{ color: "#00d2ff", marginBottom: "10px", marginTop: "15px" }}>Базовые вопросы</h4>
+          <ul style={{ paddingLeft: "20px", marginBottom: "15px" }}>
+            {questions?.core?.map((q, i) => <li key={`core-${i}`} style={{marginBottom: "5px"}}>{q}</li>)}
+          </ul>
+          
+          <h4 style={{ color: "#ff00d2", marginBottom: "10px", marginTop: "15px" }}>Вопросы этой недели</h4>
+          <ul style={{ paddingLeft: "20px" }}>
+            {questions?.variative?.map((q, i) => <li key={`var-${i}`} style={{marginBottom: "5px"}}>{q}</li>)}
+          </ul>
         </div>
       </div>
 

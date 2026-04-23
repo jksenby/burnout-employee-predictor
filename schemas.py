@@ -62,6 +62,9 @@ class MBIResponse(BaseModel):
 class SpeechAnalysisResponse(BaseModel):
     id: int
     user_id: int
+    fatigue_level: Optional[int] = None
+    stress_events: Optional[bool] = None
+    week_number: Optional[int] = None
     filename: str
     file_size_bytes: int
     transcript: str

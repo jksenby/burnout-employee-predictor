@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import traceback
@@ -11,6 +11,7 @@ from emotion import extract_emotion
 from speech_transcriber import transcribe_bytes
 from text_features import extract_text_features
 from model import predict
+from questions import get_questions_for_week
 
 from database import engine, Base, get_db
 from models_db import User, SpeechAnalysis, MBIResult
@@ -44,7 +45,7 @@ async def root():
         "streams": [
             "HuBERT (Acoustics/Emotion)",
             "WavLM (Prosody/Noise-robust)",
-            "Whisper (Semantics/Multilingual)"
+            "Faster-Whisper (Semantics/Multilingual)"
         ],
         "version": "2.0"
     }
@@ -53,6 +54,9 @@ async def root():
 @app.post("/predict")
 async def predict_burnout(
     file: UploadFile,
+    fatigue_level: int | None = Form(None),
+    stress_events: bool | None = Form(None),
+    week_number: int | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_user)
 ):
@@ -81,7 +85,7 @@ async def predict_burnout(
         print("[Stream 2] Librosa — acoustic features...")
         acoustic_features = extract_acoustic_features(audio_bytes)
 
-        print("\n[Stream 3] Whisper — transcription (multilingual)...")
+        print("\n[Stream 3] Faster-Whisper — transcription (multilingual)...")
         transcript = transcribe_bytes(audio_bytes)
 
         print("[Stream 3] NLP — linguistic features...")
@@ -131,7 +135,10 @@ async def predict_burnout(
                 emotions=result.get("emotions", {}),
                 dominant_emotion=result.get("dominant_emotion", "unknown"),
                 text_analysis=result.get("text_analysis", {}),
-                acoustic_features=result["acoustic_features"]
+                acoustic_features=result["acoustic_features"],
+                fatigue_level=fatigue_level,
+                stress_events=stress_events,
+                week_number=week_number
             )
             db.add(db_analysis)
             db.commit()
@@ -189,8 +196,37 @@ async def submit_mbi(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-MBI_CYCLE_DAYS = 30
+MBI_CYCLE_DAYS = 7
 SPEECH_CYCLE_DAYS = 7
+
+
+@app.get("/interview/questions")
+async def get_interview_questions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    now = datetime.now(timezone.utc)
+    
+    first_mbi = db.query(MBIResult).filter(MBIResult.user_id == current_user.id).order_by(MBIResult.created_at.asc()).first()
+    first_speech = db.query(SpeechAnalysis).filter(SpeechAnalysis.user_id == current_user.id).order_by(SpeechAnalysis.created_at.asc()).first()
+    
+    first_date = None
+    if first_mbi and first_speech:
+        first_date = min(first_mbi.created_at, first_speech.created_at)
+    elif first_mbi:
+        first_date = first_mbi.created_at
+    elif first_speech:
+        first_date = first_speech.created_at
+        
+    if first_date:
+        if first_date.tzinfo is None:
+            first_date = first_date.replace(tzinfo=timezone.utc)
+        days_since_first = (now - first_date).days
+        week_num = (days_since_first // 7) + 1
+    else:
+        week_num = 1
+        
+    return get_questions_for_week(week_num)
 
 
 @app.get("/schedule", response_model=ScheduleResponse)

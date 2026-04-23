@@ -12,7 +12,7 @@ const Header = ({ view }) => (
         <div className="streams-badge">
           <span className="stream-chip hubert">HuBERT — Acoustics</span>
           <span className="stream-chip wavlm">WavLM — Prosody</span>
-          <span className="stream-chip whisper">Whisper — Semantics</span>
+          <span className="stream-chip whisper">Faster-Whisper — Semantics</span>
         </div>
       </>
     ) : (
