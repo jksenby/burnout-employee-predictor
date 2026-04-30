@@ -1,35 +1,16 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
-const MBI_QUESTIONS = [
-  "I feel emotionally drained from my work.",
-  "I feel used up at the end of the workday.",
-  "I feel fatigued when I get up in the morning and have to face another day on the job.",
-  "I can easily understand how my recipients feel about things.",
-  "I feel I treat some recipients as if they were impersonal objects.",
-  "Working with people all day is really a strain for me.",
-  "I deal very effectively with the problems of my recipients.",
-  "I feel burned out from my work.",
-  "I feel I'm positively influencing other people's lives through my work.",
-  "I've become more callous toward people since I took this job.",
-  "I worry that this job is hardening me emotionally.",
-  "I feel very energetic.",
-  "I feel frustrated by my job.",
-  "I feel I'm working too hard on my job.",
-  "I don't really care what happens to some recipients.",
-  "Working with people directly puts too much stress on me.",
-  "I can easily create a relaxed atmosphere with my recipients.",
-  "I feel exhilarated after working closely with my recipients.",
-  "I have accomplished many worthwhile things in this job.",
-  "I feel like I'm at the end of my rope.",
-  "In my work, I deal with emotional problems very calmly.",
-  "I feel that recipients blame me for some of their problems."
-];
+// Questions are now managed via i18next resources
 
 const MBIQuestionnaire = () => {
+  const { t } = useTranslation();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const MBI_QUESTIONS = t("mbi.questions", { returnObjects: true });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +21,7 @@ const MBIQuestionnaire = () => {
     for (let i = 0; i < MBI_QUESTIONS.length; i++) {
       const ans = formData.get(`q${i}`);
       if (!ans) {
-        alert(`Please answer question ${i + 1}.`);
+        alert(t("mbi.please_answer", { num: i + 1 }));
         return;
       }
       answers[`q${i}`] = parseInt(ans, 10);
@@ -73,10 +54,10 @@ const MBIQuestionnaire = () => {
   if (submitted) {
     return (
       <div className="mbi-container" style={{ textAlign: "center", padding: "40px" }}>
-        <h2>Thank You!</h2>
-        <p style={{ color: "#aaa" }}>Your MBI assessment has been successfully recorded.</p>
+        <h2>{t("mbi.thank_you")}</h2>
+        <p style={{ color: "#aaa" }}>{t("mbi.success_msg")}</p>
         <button className="button" style={{ marginTop: '20px' }} onClick={() => setSubmitted(false)}>
-          Take another assessment
+          {t("mbi.take_again")}
         </button>
       </div>
     );
@@ -85,18 +66,18 @@ const MBIQuestionnaire = () => {
   return (
   <div className="mbi-container">
     <div className="mbi-intro">
-      <p>Please read each statement carefully and decide if you ever feel this way about your job.</p>
-      <p className="subtitle">Select the number that best describes how frequently you feel that way.</p>
+      <p>{t("mbi.intro")}</p>
+      <p className="subtitle">{t("mbi.freq_subtitle")}</p>
     </div>
 
     <div className="mbi-scale-legend">
-      <div><strong>0</strong><br/>Never</div>
-      <div><strong>1</strong><br/>A few times a year</div>
-      <div><strong>2</strong><br/>Once a month</div>
-      <div><strong>3</strong><br/>A few times a month</div>
-      <div><strong>4</strong><br/>Once a week</div>
-      <div><strong>5</strong><br/>A few times a week</div>
-      <div><strong>6</strong><br/>Every day</div>
+      <div><strong>0</strong><br/>{t("mbi.scale.never")}</div>
+      <div><strong>1</strong><br/>{t("mbi.scale.few_times_year")}</div>
+      <div><strong>2</strong><br/>{t("mbi.scale.once_month")}</div>
+      <div><strong>3</strong><br/>{t("mbi.scale.few_times_month")}</div>
+      <div><strong>4</strong><br/>{t("mbi.scale.once_week")}</div>
+      <div><strong>5</strong><br/>{t("mbi.scale.few_times_week")}</div>
+      <div><strong>6</strong><br/>{t("mbi.scale.every_day")}</div>
     </div>
 
     <form onSubmit={handleSubmit}>
@@ -114,7 +95,7 @@ const MBIQuestionnaire = () => {
         </div>
       ))}
       <button type="submit" className="button" style={{ marginTop: '20px' }} disabled={loading}>
-        {loading ? "Submitting..." : "Submit Assessment"}
+        {loading ? t("mbi.submitting") : t("mbi.submit_btn")}
       </button>
     </form>
   </div>

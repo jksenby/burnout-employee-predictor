@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
+  const { t } = useTranslation();
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
 
@@ -41,8 +43,8 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
         onDrop={onDrop}
       >
         <div className="upload-icon"><i className="fa-solid fa-microphone"></i></div>
-        <p><strong>Click to upload</strong> or drag & drop</p>
-        <p className="hint">WAV, MP3, FLAC — 5-60 seconds of speech</p>
+        <p><strong>{t("speech_analysis.upload.click_to_upload")}</strong> {t("speech_analysis.upload.drag_drop")}</p>
+        <p className="hint">{t("speech_analysis.upload.hint")}</p>
         <input
           type="file"
           ref={fileInputRef}
@@ -66,7 +68,7 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
         disabled={!file || loading}
         onClick={onAnalyze}
       >
-        <i class="fa-solid fa-magnifying-glass"></i> Analyze Speech
+        <i class="fa-solid fa-magnifying-glass"></i> {t("speech_analysis.analyze_btn")}
       </button>
     </div>
   );

@@ -1,13 +1,17 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
-const LoadingIndicator = () => (
-  <div className="loading show">
-    <div className="spinner"></div>
-    <p>Running multimodal analysis...</p>
-    <div className="step-indicator">
-      Processing through HuBERT → WavLM → Faster-Whisper pipeline
+const LoadingIndicator = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="loading show">
+      <div className="spinner"></div>
+      <p>{t("common.loading")}</p>
+      <div className="step-indicator">
+        {t("common.pipeline")}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default LoadingIndicator;

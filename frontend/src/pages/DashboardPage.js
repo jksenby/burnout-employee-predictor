@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LoadingIndicator from "../components/LoadingIndicator";
 
 const DashboardPage = () => {
+  const { t } = useTranslation();
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [schedule, setSchedule] = useState(null);
@@ -21,7 +23,7 @@ const DashboardPage = () => {
         setSchedule(data);
       } catch (err) {
         console.error(err);
-        setError("Could not load your schedule.");
+        setError(t("dashboard.error_loading_schedule"));
       } finally {
         setLoading(false);
       }
@@ -40,8 +42,8 @@ const DashboardPage = () => {
   }
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return "Never";
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    if (!dateStr) return t("dashboard.never");
+    return new Date(dateStr).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -61,9 +63,9 @@ const DashboardPage = () => {
   return (
     <>
       <div className="page-header">
-        <h1>Dashboard</h1>
+        <h1>{t("dashboard.title")}</h1>
         <p className="subtitle">
-          Welcome back, {user?.username}. Here's your assessment schedule.
+          {t("dashboard.welcome", { name: user?.username })}
         </p>
       </div>
 
@@ -76,9 +78,9 @@ const DashboardPage = () => {
               <div className="dash-hero-icon">
                 <i className="fa-solid fa-circle-check"></i>
               </div>
-              <h2 className="dash-hero-title">You're All Caught Up!</h2>
+              <h2 className="dash-hero-title">{t("dashboard.all_caught_up")}</h2>
               <p className="dash-hero-desc">
-                No assessments are due right now. Keep up the great work!
+                {t("dashboard.no_assessments")}
               </p>
             </>
           ) : (
@@ -92,18 +94,18 @@ const DashboardPage = () => {
               </div>
               <h2 className="dash-hero-title">
                 {schedule.today_task === "mbi"
-                  ? "MBI Questionnaire Due"
-                  : "Speech Analysis Due"}
+                  ? t("dashboard.mbi_due")
+                  : t("dashboard.speech_due")}
               </h2>
               <p className="dash-hero-desc">
                 {schedule.today_task === "mbi"
-                  ? "It's time for your monthly Maslach Burnout Inventory assessment."
-                  : "It's time for your weekly speech analysis check-in."}
+                  ? t("dashboard.mbi_desc")
+                  : t("dashboard.speech_desc")}
               </p>
               {bothDue && (
                 <div className="dash-hero-badge">
                   <span className="dash-badge-dot"></span>
-                  Both assessments are due
+                  {t("dashboard.both_due")}
                 </div>
               )}
               <button
@@ -113,10 +115,9 @@ const DashboardPage = () => {
                 }
               >
                 <span>
-                  Start{" "}
                   {schedule.today_task === "mbi"
-                    ? "MBI Assessment"
-                    : "Speech Analysis"}
+                    ? t("dashboard.start_mbi")
+                    : t("dashboard.start_speech")}
                 </span>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path
@@ -142,24 +143,24 @@ const DashboardPage = () => {
               <i className="fa-solid fa-clipboard-list"></i>
             </div>
             <div>
-              <h3 className="dash-card-title">MBI Questionnaire</h3>
-              <span className="dash-card-freq">Monthly · 30 day cycle</span>
+              <h3 className="dash-card-title">{t("dashboard.mbi_card_title")}</h3>
+              <span className="dash-card-freq">{t("dashboard.mbi_card_freq")}</span>
             </div>
             {schedule.mbi_due && (
-              <span className="dash-status-chip due">Due Now</span>
+              <span className="dash-status-chip due">{t("dashboard.due_now")}</span>
             )}
             {!schedule.mbi_due && (
-              <span className="dash-status-chip ok">On Track</span>
+              <span className="dash-status-chip ok">{t("dashboard.on_track")}</span>
             )}
           </div>
 
           <div className="dash-card-body">
             <div className="dash-progress-row">
-              <span className="dash-progress-label">Cycle progress</span>
+              <span className="dash-progress-label">{t("dashboard.cycle_progress")}</span>
               <span className="dash-progress-value">
                 {schedule.mbi_due
-                  ? "Overdue"
-                  : `${schedule.mbi_days_remaining} days left`}
+                  ? t("dashboard.overdue")
+                  : t("dashboard.days_left", { count: schedule.mbi_days_remaining })}
               </span>
             </div>
             <div className="dash-progress-bar">
@@ -171,13 +172,13 @@ const DashboardPage = () => {
 
             <div className="dash-card-meta">
               <div className="dash-meta-item">
-                <span className="dash-meta-label">Last completed</span>
+                <span className="dash-meta-label">{t("dashboard.last_completed")}</span>
                 <span className="dash-meta-value">
                   {formatDate(schedule.mbi_last_date)}
                 </span>
               </div>
               <div className="dash-meta-item">
-                <span className="dash-meta-label">Next due</span>
+                <span className="dash-meta-label">{t("dashboard.next_due")}</span>
                 <span className="dash-meta-value">
                   {formatDate(schedule.mbi_next_date)}
                 </span>
@@ -186,7 +187,7 @@ const DashboardPage = () => {
           </div>
 
           <button className="dash-card-action" onClick={() => navigate("/mbi")}>
-            {schedule.mbi_due ? "Take Assessment" : "View MBI"}
+            {schedule.mbi_due ? t("dashboard.take_assessment") : t("dashboard.view_mbi")}
           </button>
         </div>
 
@@ -197,24 +198,24 @@ const DashboardPage = () => {
               <i className="fa-solid fa-microphone"></i>
             </div>
             <div>
-              <h3 className="dash-card-title">Speech Analysis</h3>
-              <span className="dash-card-freq">Weekly · 7 day cycle</span>
+              <h3 className="dash-card-title">{t("dashboard.speech_card_title")}</h3>
+              <span className="dash-card-freq">{t("dashboard.speech_card_freq")}</span>
             </div>
             {schedule.speech_due && (
-              <span className="dash-status-chip due">Due Now</span>
+              <span className="dash-status-chip due">{t("dashboard.due_now")}</span>
             )}
             {!schedule.speech_due && (
-              <span className="dash-status-chip ok">On Track</span>
+              <span className="dash-status-chip ok">{t("dashboard.on_track")}</span>
             )}
           </div>
 
           <div className="dash-card-body">
             <div className="dash-progress-row">
-              <span className="dash-progress-label">Cycle progress</span>
+              <span className="dash-progress-label">{t("dashboard.cycle_progress")}</span>
               <span className="dash-progress-value">
                 {schedule.speech_due
-                  ? "Overdue"
-                  : `${schedule.speech_days_remaining} days left`}
+                  ? t("dashboard.overdue")
+                  : t("dashboard.days_left", { count: schedule.speech_days_remaining })}
               </span>
             </div>
             <div className="dash-progress-bar">
@@ -228,13 +229,13 @@ const DashboardPage = () => {
 
             <div className="dash-card-meta">
               <div className="dash-meta-item">
-                <span className="dash-meta-label">Last completed</span>
+                <span className="dash-meta-label">{t("dashboard.last_completed")}</span>
                 <span className="dash-meta-value">
                   {formatDate(schedule.speech_last_date)}
                 </span>
               </div>
               <div className="dash-meta-item">
-                <span className="dash-meta-label">Next due</span>
+                <span className="dash-meta-label">{t("dashboard.next_due")}</span>
                 <span className="dash-meta-value">
                   {formatDate(schedule.speech_next_date)}
                 </span>
@@ -246,7 +247,7 @@ const DashboardPage = () => {
             className="dash-card-action"
             onClick={() => navigate("/speech")}
           >
-            {schedule.speech_due ? "Start Analysis" : "View Speech"}
+            {schedule.speech_due ? t("dashboard.start_analysis") : t("dashboard.view_speech")}
           </button>
         </div>
       </div>
@@ -257,10 +258,9 @@ const DashboardPage = () => {
           <i className="fa-solid fa-lightbulb"></i>
         </div>
         <div>
-          <strong>Scheduling Priority</strong>
+          <strong>{t("dashboard.priority_title")}</strong>
           <p>
-            MBI questionnaire (monthly) takes priority over Speech Analysis
-            (weekly). When both are due on the same day, complete the MBI first.
+            {t("dashboard.priority_desc")}
           </p>
         </div>
       </div>

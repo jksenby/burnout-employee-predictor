@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 
 const ProfilePage = () => {
+  const { t } = useTranslation();
   const { user, token } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -49,10 +51,10 @@ const ProfilePage = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to update profile");
+        throw new Error(data.detail || t("profile.fail_update"));
       }
 
-      setMessage({ type: "success", text: "Profile updated successfully!" });
+      setMessage({ type: "success", text: t("profile.success_update") });
       // In a real app we might also update the user object in context here by calling a refresh on /me
     } catch (err) {
       setMessage({ type: "error", text: err.message });
@@ -67,15 +69,15 @@ const ProfilePage = () => {
   return (
     <div className="page-wrapper profile-page">
       <div className="page-header">
-        <h1>Your Profile</h1>
-        <p className="subtitle">Update your personal information below</p>
+        <h1>{t("profile.title")}</h1>
+        <p className="subtitle">{t("profile.subtitle")}</p>
       </div>
 
       <div className="profile-card">
         <form onSubmit={handleSubmit} className="profile-form">
           <div className="form-group row">
             <div className="col">
-              <label>Username</label>
+              <label>{t("profile.username")}</label>
               <input
                 type="text"
                 value={user?.username || ""}
@@ -84,7 +86,7 @@ const ProfilePage = () => {
               />
             </div>
             <div className="col">
-              <label>Email</label>
+              <label>{t("profile.email")}</label>
               <input
                 type="email"
                 value={user?.email || ""}
@@ -95,7 +97,7 @@ const ProfilePage = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="gender">Gender</label>
+            <label htmlFor="gender">{t("profile.gender")}</label>
             <select
               id="gender"
               name="gender"
@@ -105,17 +107,17 @@ const ProfilePage = () => {
               className="form-input"
             >
               <option value="" disabled>
-                Select gender
+                {t("profile.select_gender")}
               </option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-              <option value="Other">Other</option>
+              <option value="Male">{t("profile.male")}</option>
+              <option value="Female">{t("profile.female")}</option>
+              <option value="Other">{t("profile.other")}</option>
             </select>
           </div>
 
           <div className="form-group row">
             <div className="col">
-              <label htmlFor="phone_number">Phone Number</label>
+              <label htmlFor="phone_number">{t("profile.phone")}</label>
               <input
                 id="phone_number"
                 name="phone_number"
@@ -127,7 +129,7 @@ const ProfilePage = () => {
               />
             </div>
             <div className="col">
-              <label htmlFor="age">Age</label>
+              <label htmlFor="age">{t("profile.age")}</label>
               <input
                 id="age"
                 name="age"
@@ -151,7 +153,7 @@ const ProfilePage = () => {
             disabled={loading}
             className="button profile-submit"
           >
-            {loading ? "Saving..." : "Save Changes"}
+            {loading ? t("profile.saving") : t("profile.save_btn")}
           </button>
         </form>
       </div>

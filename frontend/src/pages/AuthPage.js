@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 
 const AuthPage = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
@@ -52,8 +54,8 @@ const AuthPage = () => {
           <h1 className="auth-title">Burnout Predictor</h1>
           <p className="auth-subtitle">
             {isLogin
-              ? "Welcome back — sign in to continue"
-              : "Get started — create your account"}
+              ? t("auth.welcome_login")
+              : t("auth.welcome_register")}
           </p>
         </div>
 
@@ -72,7 +74,7 @@ const AuthPage = () => {
             }}
             type="button"
           >
-            Sign In
+            {t("auth.signin_tab")}
           </button>
           <button
             className={`auth-toggle-btn ${!isLogin ? "active" : ""}`}
@@ -82,7 +84,7 @@ const AuthPage = () => {
             }}
             type="button"
           >
-            Register
+            {t("auth.register_tab")}
           </button>
         </div>
 
@@ -90,14 +92,14 @@ const AuthPage = () => {
           <div className="auth-form-group">
             <label htmlFor="username">
               <i className="fa-solid fa-user"></i>
-              Username
+              {t("auth.username")}
             </label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your username"
+              placeholder={t("auth.username_placeholder")}
               required
               autoComplete="username"
             />
@@ -108,14 +110,14 @@ const AuthPage = () => {
               <div className="auth-form-group">
                 <label htmlFor="email">
                   <i className="fa-solid fa-envelope"></i>
-                  Email
+                  {t("auth.email")}
                 </label>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder={t("auth.email_placeholder")}
                   required
                   autoComplete="email"
                 />
@@ -123,7 +125,7 @@ const AuthPage = () => {
               <div className="auth-form-group">
                 <label htmlFor="gender">
                   <i className="fa-solid fa-venus-mars"></i>
-                  Gender
+                  {t("auth.gender")}
                 </label>
                 <select
                   id="gender"
@@ -132,16 +134,16 @@ const AuthPage = () => {
                   required
                   className="auth-select"
                 >
-                  <option value="" disabled>Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
+                  <option value="" disabled>{t("auth.select_gender")}</option>
+                  <option value="Male">{t("auth.male")}</option>
+                  <option value="Female">{t("auth.female")}</option>
+                  <option value="Other">{t("auth.other")}</option>
                 </select>
               </div>
               <div className="auth-form-group">
                 <label htmlFor="phone">
                   <i className="fa-solid fa-phone"></i>
-                  Phone Number
+                  {t("auth.phone")}
                 </label>
                 <input
                   id="phone"
@@ -155,7 +157,7 @@ const AuthPage = () => {
               <div className="auth-form-group">
                 <label htmlFor="age">
                   <i className="fa-solid fa-calendar-day"></i>
-                  Age
+                  {t("auth.age")}
                 </label>
                 <select
                   id="age"
@@ -164,7 +166,7 @@ const AuthPage = () => {
                   required
                   className="auth-select"
                 >
-                  <option value="" disabled>Select age</option>
+                  <option value="" disabled>{t("auth.select_age")}</option>
                   {[...Array(100).keys()].map(i => (
                     <option key={i+18} value={i+18}>{i+18}</option>
                   ))}
@@ -176,14 +178,14 @@ const AuthPage = () => {
           <div className="auth-form-group">
             <label htmlFor="password">
               <i className="fa-solid fa-lock"></i>
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder={t("auth.password_placeholder")}
               required
               autoComplete={isLogin ? "current-password" : "new-password"}
             />
@@ -200,16 +202,16 @@ const AuthPage = () => {
             {submitting ? (
               <span className="auth-submit-loading">
                 <span className="auth-spinner"></span>
-                Please wait...
+                {t("auth.please_wait")}
               </span>
             ) : isLogin ? (
               <>
-                Sign In
+                {t("auth.signin_btn")}
                 <i className="fa-solid fa-arrow-right"></i>
               </>
             ) : (
               <>
-                Create Account
+                {t("auth.register_btn")}
                 <i className="fa-solid fa-user-plus"></i>
               </>
             )}
@@ -217,13 +219,13 @@ const AuthPage = () => {
         </form>
 
         <div className="auth-divider">
-          <span>or</span>
+          <span>{t("auth.or")}</span>
         </div>
 
         <p className="auth-footer">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+          {isLogin ? t("auth.no_account") : t("auth.have_account")}{" "}
           <button className="auth-link" onClick={toggleMode} type="button">
-            {isLogin ? "Create one" : "Sign in instead"}
+            {isLogin ? t("auth.create_one") : t("auth.signin_instead")}
           </button>
         </p>
       </div>

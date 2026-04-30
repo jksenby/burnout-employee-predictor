@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Encode an AudioBuffer into a WAV Blob
 function audioBufferToWav(buffer) {
@@ -51,6 +52,7 @@ async function convertToWav(blob) {
 // Removed READING_TEXT
 
 const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, questions }) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorderRef = useRef(null);
@@ -136,18 +138,18 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
   return (
     <div className="upload-card">
       <div className="reading-passage">
-        <h3><i className="fa-solid fa-clipboard-question"></i> Интервью (Неделя {questions?.week_number || 1})</h3>
-        <p className="hint" style={{marginBottom: "15px"}}>Пожалуйста, ответьте на эти вопросы в своей записи (рекомендуется 30–60 сек).</p>
+        <h3><i className="fa-solid fa-clipboard-question"></i> {t("speech_analysis.interview.title", { week: questions?.week_number || 1 })}</h3>
+        <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.interview.hint")}</p>
         
         <div className="interview-questions" style={{ textAlign: "left", fontSize: "15px" }}>
-          <h4 style={{ color: "#00d2ff", marginBottom: "10px", marginTop: "15px" }}>Базовые вопросы</h4>
+          <h4 style={{ color: "#00d2ff", marginBottom: "10px", marginTop: "15px" }}>{t("speech_analysis.interview.core_questions")}</h4>
           <ul style={{ paddingLeft: "20px", marginBottom: "15px" }}>
-            {questions?.core?.map((q, i) => <li key={`core-${i}`} style={{marginBottom: "5px"}}>{q}</li>)}
+            {questions?.core?.map((q, i) => <li key={`core-${i}`} style={{marginBottom: "5px"}}>{t(`questions.${q}`)}</li>)}
           </ul>
           
-          <h4 style={{ color: "#ff00d2", marginBottom: "10px", marginTop: "15px" }}>Вопросы этой недели</h4>
+          <h4 style={{ color: "#ff00d2", marginBottom: "10px", marginTop: "15px" }}>{t("speech_analysis.interview.week_questions")}</h4>
           <ul style={{ paddingLeft: "20px" }}>
-            {questions?.variative?.map((q, i) => <li key={`var-${i}`} style={{marginBottom: "5px"}}>{q}</li>)}
+            {questions?.variative?.map((q, i) => <li key={`var-${i}`} style={{marginBottom: "5px"}}>{t(`questions.${q}`)}</li>)}
           </ul>
         </div>
       </div>
@@ -158,8 +160,8 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
             <button className="record-btn" onClick={startRecording} type="button">
               <span className="record-btn-inner" />
             </button>
-            <p className="recorder-hint">Click to start recording</p>
-            <p className="hint">WAV, MP3, FLAC — 5-60 seconds of speech</p>
+            <p className="recorder-hint">{t("speech_analysis.recorder.click_to_start")}</p>
+            <p className="hint">{t("speech_analysis.recorder.hint")}</p>
           </div>
         )}
 
@@ -175,7 +177,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
               <span className="rec-timer">{formatTime(elapsed)}</span>
             </div>
             <button className="stop-btn" onClick={stopRecording} type="button">
-              <i className="fa-solid fa-stop"></i> Stop Recording
+              <i className="fa-solid fa-stop"></i> {t("speech_analysis.recorder.stop")}
             </button>
           </div>
         )}
@@ -186,7 +188,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
               <strong><i className="fa-solid fa-microphone-lines"></i> {file.name}</strong> &nbsp;·&nbsp; {(file.size / (1024 * 1024)).toFixed(2)} MB
             </div>
             {audioUrl && <audio src={audioUrl} controls className="show" />}
-            <button className="record-btn record-btn-small" onClick={startRecording} type="button" title="Record again">
+            <button className="record-btn record-btn-small" onClick={startRecording} type="button" title={t("speech_analysis.recorder.record_again")}>
               <span className="record-btn-inner" />
             </button>
           </div>
@@ -198,7 +200,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
         disabled={!file || loading}
         onClick={onAnalyze}
       >
-        <i class="fa-solid fa-magnifying-glass"></i> Analyze Speech
+        <i class="fa-solid fa-magnifying-glass"></i> {t("speech_analysis.analyze_btn")}
       </button>
     </div>
   );

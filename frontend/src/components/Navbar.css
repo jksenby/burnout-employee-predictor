@@ -135,3 +135,43 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
+
+.lang-switcher {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.lang-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.lang-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+.lang-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .lang-switcher {
+    margin-right: 4px;
+  }
+  .lang-btn {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+}

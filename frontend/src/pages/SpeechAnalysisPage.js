@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import AudioUpload from "../components/AudioUpload";
 import AudioRecorder from "../components/AudioRecorder";
@@ -9,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 const API_URL = "http://localhost:8000/predict";
 
 const SpeechAnalysisPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
@@ -119,14 +121,14 @@ const SpeechAnalysisPage = () => {
   return (
     <>
       <div className="page-header">
-        <h1>Speech Analysis</h1>
+        <h1>{t("speech_analysis.title")}</h1>
         <p className="subtitle">
-          Multimodal speech analysis with late-fusion architecture
+          {t("speech_analysis.subtitle")}
         </p>
         <div className="streams-badge">
-          <span className="stream-chip hubert">HuBERT — Acoustics</span>
-          <span className="stream-chip wavlm">WavLM — Prosody</span>
-          <span className="stream-chip whisper">Faster-Whisper — Semantics</span>
+          <span className="stream-chip hubert">{t("speech_analysis.hubert")}</span>
+          <span className="stream-chip wavlm">{t("speech_analysis.wavlm")}</span>
+          <span className="stream-chip whisper">{t("speech_analysis.whisper")}</span>
         </div>
       </div>
 
@@ -142,11 +144,11 @@ const SpeechAnalysisPage = () => {
             }}
             onClick={() => navigate("/history")}
           >
-            ← Back to History
+            ← {t("speech_analysis.back_to_history")}
           </button>
           <div className="card" style={{ padding: "10px", backgroundColor: "rgba(0, 210, 255, 0.05)", borderLeft: "4px solid #00d2ff" }}>
             <p style={{ margin: 0, color: "#ccc", fontSize: "14px" }}>
-              <i className="fa-solid fa-clock-rotate-left"></i> Viewing historical record from {data && new Date(data.created_at).toLocaleString()}
+              <i className="fa-solid fa-clock-rotate-left"></i> {t("speech_analysis.viewing_history")} {data && new Date(data.created_at).toLocaleString()}
             </p>
           </div>
         </div>
@@ -157,22 +159,22 @@ const SpeechAnalysisPage = () => {
               className={`input-tab ${activeTab === "upload" ? "active" : ""}`}
               onClick={() => handleTabChange("upload")}
             >
-              Upload File
+              {t("speech_analysis.tabs.upload")}
             </button>
             <button
               className={`input-tab ${activeTab === "record" ? "active" : ""}`}
               onClick={() => handleTabChange("record")}
             >
-              Record Audio
+              {t("speech_analysis.tabs.record")}
             </button>
           </div>
 
           <div className="self-report-form" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "rgba(255, 255, 255, 0.05)", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-            <h3 style={{ marginBottom: "15px", fontSize: "16px", color: "#fff" }}><i className="fa-solid fa-clipboard-user"></i> Самооценка перед записью</h3>
+            <h3 style={{ marginBottom: "15px", fontSize: "16px", color: "#fff" }}><i className="fa-solid fa-clipboard-user"></i> {t("speech_analysis.self_report.title")}</h3>
             
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", marginBottom: "8px", color: "#ccc" }}>
-                Ваш уровень усталости сегодня (1-10): <span style={{ fontWeight: "bold", color: "#00d2ff", fontSize: "18px", marginLeft: "10px" }}>{fatigueLevel}</span>
+                {t("speech_analysis.self_report.fatigue_label")} <span style={{ fontWeight: "bold", color: "#00d2ff", fontSize: "18px", marginLeft: "10px" }}>{fatigueLevel}</span>
               </label>
               <input 
                 type="range" 
@@ -182,8 +184,8 @@ const SpeechAnalysisPage = () => {
                 style={{ width: "100%", accentColor: "#00d2ff" }}
               />
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#888", marginTop: "5px" }}>
-                <span>1 - Полон сил</span>
-                <span>10 - Полностью истощён</span>
+                <span>{t("speech_analysis.self_report.full_energy")}</span>
+                <span>{t("speech_analysis.self_report.exhausted")}</span>
               </div>
             </div>
 
@@ -195,7 +197,7 @@ const SpeechAnalysisPage = () => {
                   onChange={(e) => setStressEvents(e.target.checked)}
                   style={{ marginRight: "12px", width: "18px", height: "18px", accentColor: "#00d2ff" }}
                 />
-                Были ли у вас сильные стрессовые события на этой неделе?
+                {t("speech_analysis.self_report.stress_question")}
               </label>
             </div>
           </div>

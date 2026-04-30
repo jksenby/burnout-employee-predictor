@@ -1,15 +1,21 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
   const handleLogout = () => {
     logout();
     navigate("/auth");
+  };
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
   };
 
   return (
@@ -34,7 +40,7 @@ const Navbar = () => {
               <span className="nav-link-icon">
                 <i className="fa-solid fa-chart-simple"></i>
               </span>
-              <span>Dashboard</span>
+              <span>{t("nav.dashboard")}</span>
             </NavLink>
             <NavLink
               to="/speech"
@@ -45,7 +51,7 @@ const Navbar = () => {
               <span className="nav-link-icon">
                 <i className="fa-solid fa-microphone"></i>
               </span>
-              <span>Speech Analysis</span>
+              <span>{t("nav.analysis")}</span>
             </NavLink>
             <NavLink
               to="/mbi"
@@ -56,7 +62,7 @@ const Navbar = () => {
               <span className="nav-link-icon">
                 <i className="fa-solid fa-clipboard-list"></i>
               </span>
-              <span>MBI Questionnaire</span>
+              <span>{t("nav.mbi")}</span>
             </NavLink>
             <NavLink
               to="/history"
@@ -67,19 +73,39 @@ const Navbar = () => {
               <span className="nav-link-icon">
                 <i className="fa-solid fa-clock-rotate-left"></i>
               </span>
-              <span>History</span>
+              <span>{t("nav.history")}</span>
             </NavLink>
           </div>
         )}
 
         <div className="navbar-user">
+          <div className="lang-switcher">
+            <button 
+              className={`lang-btn ${i18n.language === 'en' ? 'active' : ''}`}
+              onClick={() => changeLanguage('en')}
+            >
+              EN
+            </button>
+            <button 
+              className={`lang-btn ${i18n.language === 'ru' ? 'active' : ''}`}
+              onClick={() => changeLanguage('ru')}
+            >
+              RU
+            </button>
+            <button 
+              className={`lang-btn ${i18n.language === 'kk' ? 'active' : ''}`}
+              onClick={() => changeLanguage('kk')}
+            >
+              KZ
+            </button>
+          </div>
           {isAuthenticated ? (
             <>
               <NavLink to="/profile" className="user-badge-link">
                 <span className="user-badge">{user?.username}</span>
               </NavLink>
               <button className="logout-btn" onClick={handleLogout}>
-                Logout
+                {t("nav.logout")}
               </button>
             </>
           ) : (
