@@ -55,6 +55,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
   const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -135,6 +136,26 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
     return `${m}:${s}`;
   };
 
+  const allQuestions = [];
+  if (questions?.core) {
+    questions.core.forEach((q) => allQuestions.push({ type: 'core', text: q }));
+  }
+  if (questions?.variative) {
+    questions.variative.forEach((q) => allQuestions.push({ type: 'variative', text: q }));
+  }
+
+  const nextQuestion = () => {
+    if (currentQuestionIndex < allQuestions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
   return (
     <div className="upload-card">
       <div className="reading-passage">
@@ -142,15 +163,45 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
         <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.interview.hint")}</p>
         
         <div className="interview-questions" style={{ textAlign: "left", fontSize: "15px" }}>
-          <h4 style={{ color: "#00d2ff", marginBottom: "10px", marginTop: "15px" }}>{t("speech_analysis.interview.core_questions")}</h4>
-          <ul style={{ paddingLeft: "20px", marginBottom: "15px" }}>
-            {questions?.core?.map((q, i) => <li key={`core-${i}`} style={{marginBottom: "5px"}}>{t(`questions.${q}`)}</li>)}
-          </ul>
-          
-          <h4 style={{ color: "#ff00d2", marginBottom: "10px", marginTop: "15px" }}>{t("speech_analysis.interview.week_questions")}</h4>
-          <ul style={{ paddingLeft: "20px" }}>
-            {questions?.variative?.map((q, i) => <li key={`var-${i}`} style={{marginBottom: "5px"}}>{t(`questions.${q}`)}</li>)}
-          </ul>
+          {allQuestions.length > 0 && (
+            <div className="question-carousel" style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "10px", padding: "20px", marginTop: "10px", overflow: "hidden" }}>
+              
+              <div 
+                onClick={prevQuestion}
+                style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex > 0 ? "pointer" : "default", zIndex: 1 }}
+              />
+              <div 
+                onClick={nextQuestion}
+                style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex < allQuestions.length - 1 ? "pointer" : "default", zIndex: 1 }}
+              />
+
+              <button 
+                onClick={prevQuestion} 
+                disabled={currentQuestionIndex === 0}
+                style={{ position: "absolute", left: "10px", background: "none", border: "none", color: currentQuestionIndex === 0 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === 0 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+              >
+                <i className="fa-solid fa-chevron-left"></i>
+              </button>
+              
+              <div style={{ textAlign: "center", maxWidth: "80%", zIndex: 0 }}>
+                <div style={{ color: allQuestions[currentQuestionIndex].type === 'core' ? "#00d2ff" : "#ff00d2", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", fontWeight: "bold" }}>
+                  {t("speech_analysis.interview.questions_label")}
+                  &nbsp;({currentQuestionIndex + 1} / {allQuestions.length})
+                </div>
+                <div style={{ fontSize: "18px", lineHeight: "1.4" }}>
+                  {t(allQuestions[currentQuestionIndex].text)}
+                </div>
+              </div>
+
+              <button 
+                onClick={nextQuestion} 
+                disabled={currentQuestionIndex === allQuestions.length - 1}
+                style={{ position: "absolute", right: "10px", background: "none", border: "none", color: currentQuestionIndex === allQuestions.length - 1 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === allQuestions.length - 1 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+              >
+                <i className="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

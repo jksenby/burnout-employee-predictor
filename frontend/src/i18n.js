@@ -123,7 +123,8 @@ const resources = {
           "title": "Interview (Week {{week}})",
           "hint": "Please answer these questions in your recording (recommended 30–60 sec).",
           "core_questions": "Core Questions",
-          "week_questions": "This Week's Questions"
+          "week_questions": "This Week's Questions",
+          "questions_label": "Questions"
         },
         "recorder": {
           "click_to_start": "Click to start recording",
@@ -369,7 +370,8 @@ const resources = {
           "title": "Интервью (Неделя {{week}})",
           "hint": "Пожалуйста, ответьте на эти вопросы в своей записи (рекомендуется 30–60 сек).",
           "core_questions": "Базовые вопросы",
-          "week_questions": "Вопросы этой недели"
+          "week_questions": "Вопросы этой недели",
+          "questions_label": "Вопросы"
         },
         "recorder": {
           "click_to_start": "Нажмите, чтобы начать запись",
@@ -615,7 +617,8 @@ const resources = {
           "title": "Интервью ({{week}}-апта)",
           "hint": "Осы сұрақтарға жазбаңызда жауап беріңіз (30–60 сек ұсынылады).",
           "core_questions": "Негізгі сұрақтар",
-          "week_questions": "Осы аптаның сұрақтары"
+          "week_questions": "Осы аптаның сұрақтары",
+          "questions_label": "Сұрақтар"
         },
         "recorder": {
           "click_to_start": "Жазуды бастау үшін басыңыз",
