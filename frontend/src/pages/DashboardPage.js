@@ -54,7 +54,7 @@ const DashboardPage = () => {
   const allClear = !schedule.mbi_due && !schedule.speech_due;
 
   const mbiProgress = schedule.mbi_last_date
-    ? Math.min(100, ((30 - schedule.mbi_days_remaining) / 30) * 100)
+    ? Math.min(100, ((60 - schedule.mbi_days_remaining) / 60) * 100)
     : 0;
   const speechProgress = schedule.speech_last_date
     ? Math.min(100, ((7 - schedule.speech_days_remaining) / 7) * 100)

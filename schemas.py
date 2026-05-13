@@ -97,3 +97,21 @@ class ScheduleResponse(BaseModel):
     mbi_days_remaining: int
     speech_days_remaining: int
     today_task: Optional[str] = None  # "mbi", "speech", or null
+
+
+class ReportDataPoint(BaseModel):
+    week_start: datetime
+    week_end: datetime
+    week_number: int
+    mbi_score: Optional[float] = None
+    speech_score: Optional[float] = None
+    absolutist_index: Optional[float] = None
+    negative_word_ratio: Optional[float] = None
+    sentiment_polarity: Optional[float] = None
+    speech_count: int = 0
+    mbi_count: int = 0
+
+class ReportResponse(BaseModel):
+    data: list[ReportDataPoint]
+    cross_validation_failed: bool
+    cross_validation_message: Optional[str] = None

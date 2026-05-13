@@ -15,7 +15,7 @@ from questions import get_questions_for_week
 
 from database import engine, Base, get_db
 from models_db import User, SpeechAnalysis, MBIResult
-from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse, SpeechAnalysisResponse
+from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse, SpeechAnalysisResponse, ReportResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from auth import get_current_user, get_optional_user
@@ -196,7 +196,7 @@ async def submit_mbi(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-MBI_CYCLE_DAYS = 7
+MBI_CYCLE_DAYS = 60
 SPEECH_CYCLE_DAYS = 7
 
 
@@ -236,31 +236,46 @@ async def get_schedule(
 ):
     now = datetime.now(timezone.utc)
 
-    last_mbi = db.query(MBIResult)\
+    # All MBI results for the user to determine start and count
+    mbi_results = db.query(MBIResult)\
         .filter(MBIResult.user_id == current_user.id)\
-        .order_by(MBIResult.created_at.desc())\
-        .first()
+        .order_by(MBIResult.created_at.asc())\
+        .all()
+    
+    mbi_count = len(mbi_results)
+    first_mbi = mbi_results[0] if mbi_count > 0 else None
+    last_mbi = mbi_results[-1] if mbi_count > 0 else None
 
     last_speech = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id)\
         .order_by(SpeechAnalysis.created_at.desc())\
         .first()
 
-    # MBI schedule
-    if last_mbi and last_mbi.created_at:
-        mbi_last = last_mbi.created_at.replace(tzinfo=timezone.utc) if last_mbi.created_at.tzinfo is None else last_mbi.created_at
-        mbi_days_since = (now - mbi_last).days
-        mbi_days_remaining = max(0, MBI_CYCLE_DAYS - mbi_days_since)
-        mbi_due = mbi_days_since >= MBI_CYCLE_DAYS
-        mbi_next = (mbi_last + timedelta(days=MBI_CYCLE_DAYS)).strftime("%Y-%m-%d")
-        mbi_last_date = last_mbi.created_at
-    else:
+    # MBI schedule: Start (0) and End (60 days after first)
+    mbi_due = False
+    mbi_days_remaining = 0
+    mbi_next = now.strftime("%Y-%m-%d")
+    mbi_last_date = last_mbi.created_at if last_mbi else None
+
+    if mbi_count == 0:
+        # Beginning of experiment
         mbi_due = True
         mbi_days_remaining = 0
         mbi_next = now.strftime("%Y-%m-%d")
-        mbi_last_date = None
+    elif mbi_count == 1:
+        # Check if 60 days passed since the first MBI
+        mbi_first_date = first_mbi.created_at.replace(tzinfo=timezone.utc) if first_mbi.created_at.tzinfo is None else first_mbi.created_at
+        days_since_start = (now - mbi_first_date).days
+        mbi_days_remaining = max(0, MBI_CYCLE_DAYS - days_since_start)
+        mbi_due = days_since_start >= MBI_CYCLE_DAYS
+        mbi_next = (mbi_first_date + timedelta(days=MBI_CYCLE_DAYS)).strftime("%Y-%m-%d")
+    else:
+        # Experiment finished for MBI (already did 2 or more)
+        mbi_due = False
+        mbi_days_remaining = 0
+        mbi_next = "Finished"
 
-    # Speech schedule
+    # Speech schedule: Weekly
     if last_speech and last_speech.created_at:
         speech_last = last_speech.created_at.replace(tzinfo=timezone.utc) if last_speech.created_at.tzinfo is None else last_speech.created_at
         speech_days_since = (now - speech_last).days
@@ -276,9 +291,7 @@ async def get_schedule(
 
     # Priority: MBI > Speech
     today_task = None
-    if mbi_due and speech_due:
-        today_task = "mbi"
-    elif mbi_due:
+    if mbi_due:
         today_task = "mbi"
     elif speech_due:
         today_task = "speech"
@@ -331,6 +344,127 @@ async def get_history(
         "speech_analyses": speech_analyses,
         "mbi_results": mbi_results
     }
+
+
+@app.get("/report/data", response_model=ReportResponse)
+async def get_report_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    now = datetime.now(timezone.utc)
+    eight_weeks_ago = now - timedelta(weeks=8)
+    
+    # We will gather all data within the last 8 weeks
+    speech_analyses = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.user_id == current_user.id, SpeechAnalysis.created_at >= eight_weeks_ago)\
+        .order_by(SpeechAnalysis.created_at.asc())\
+        .all()
+        
+    mbi_results = db.query(MBIResult)\
+        .filter(MBIResult.user_id == current_user.id, MBIResult.created_at >= eight_weeks_ago)\
+        .order_by(MBIResult.created_at.asc())\
+        .all()
+        
+    # Group by week (1 to 8) based on distance from eight_weeks_ago
+    # Actually, it's better to calculate week segments starting from 8 weeks ago
+    report_data = []
+    
+    cross_val_failed = False
+    
+    # We'll calculate weekly averages for the metrics
+    for w in range(8):
+        week_start = eight_weeks_ago + timedelta(weeks=w)
+        week_end = week_start + timedelta(weeks=1)
+        
+        week_speech = [s for s in speech_analyses if week_start <= (s.created_at.replace(tzinfo=timezone.utc) if s.created_at.tzinfo is None else s.created_at) < week_end]
+        week_mbi = [m for m in mbi_results if week_start <= (m.created_at.replace(tzinfo=timezone.utc) if m.created_at.tzinfo is None else m.created_at) < week_end]
+        
+        dp = {
+            "week_start": week_start,
+            "week_end": week_end,
+            "week_number": w + 1,
+            "mbi_score": None,
+            "speech_score": None,
+            "absolutist_index": None,
+            "negative_word_ratio": None,
+            "sentiment_polarity": None,
+            "speech_count": len(week_speech),
+            "mbi_count": len(week_mbi)
+        }
+        
+        if week_mbi:
+            dp["mbi_score"] = sum(m.burnout_index for m in week_mbi) / len(week_mbi)
+            
+        if week_speech:
+            dp["speech_score"] = sum(s.score for s in week_speech) / len(week_speech)
+            
+            # Text features
+            abs_indexes = []
+            neg_ratios = []
+            sentiments = []
+            for s in week_speech:
+                if s.text_analysis:
+                    if "absolutist_index" in s.text_analysis:
+                        abs_indexes.append(s.text_analysis["absolutist_index"])
+                    if "negative_word_ratio" in s.text_analysis:
+                        neg_ratios.append(s.text_analysis["negative_word_ratio"])
+                    if "sentiment_polarity" in s.text_analysis:
+                        sentiments.append(s.text_analysis["sentiment_polarity"])
+                        
+            if abs_indexes:
+                dp["absolutist_index"] = sum(abs_indexes) / len(abs_indexes)
+            if neg_ratios:
+                dp["negative_word_ratio"] = sum(neg_ratios) / len(neg_ratios)
+            if sentiments:
+                dp["sentiment_polarity"] = sum(sentiments) / len(sentiments)
+                
+        report_data.append(dp)
+        
+    # Check cross validation logic across all available data over 8 weeks
+    avg_mbi = None
+    avg_speech = None
+    avg_abs = None
+    avg_neg = None
+    avg_sent = None
+    
+    valid_mbis = [d["mbi_score"] for d in report_data if d["mbi_score"] is not None]
+    if valid_mbis:
+        avg_mbi = sum(valid_mbis) / len(valid_mbis)
+        
+    valid_speech = [d["speech_score"] for d in report_data if d["speech_score"] is not None]
+    if valid_speech:
+        avg_speech = sum(valid_speech) / len(valid_speech)
+        
+    valid_abs = [d["absolutist_index"] for d in report_data if d["absolutist_index"] is not None]
+    if valid_abs:
+        avg_abs = sum(valid_abs) / len(valid_abs)
+        
+    valid_neg = [d["negative_word_ratio"] for d in report_data if d["negative_word_ratio"] is not None]
+    if valid_neg:
+        avg_neg = sum(valid_neg) / len(valid_neg)
+        
+    valid_sent = [d["sentiment_polarity"] for d in report_data if d["sentiment_polarity"] is not None]
+    if valid_sent:
+        avg_sent = sum(valid_sent) / len(valid_sent)
+        
+    cross_validation_message = None
+    
+    # If acoustic/mbi score is high but linguistic features are healthy
+    if avg_speech is not None and avg_speech > 0.6:
+        if avg_abs is not None and avg_abs < 0.05 and avg_neg is not None and avg_neg < 0.05 and avg_sent is not None and avg_sent > 0.0:
+            cross_val_failed = True
+            cross_validation_message = "Risk of burnout is not confirmed by cross-data. The semantic content remains constructive."
+            
+    if not cross_val_failed and avg_mbi is not None and avg_mbi > 0.6:
+        if avg_abs is not None and avg_abs < 0.05 and avg_neg is not None and avg_neg < 0.05 and avg_sent is not None and avg_sent > 0.0:
+            cross_val_failed = True
+            cross_validation_message = "Risk of burnout is not confirmed by cross-data. The semantic content remains constructive."
+
+    return ReportResponse(
+        data=report_data,
+        cross_validation_failed=cross_val_failed,
+        cross_validation_message=cross_validation_message
+    )
 
 
 if __name__ == "__main__":

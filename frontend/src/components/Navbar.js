@@ -75,6 +75,17 @@ const Navbar = () => {
               </span>
               <span>{t("nav.history")}</span>
             </NavLink>
+            <NavLink
+              to="/report"
+              className={({ isActive }) =>
+                `nav-link ${isActive ? "active" : ""}`
+              }
+            >
+              <span className="nav-link-icon">
+                <i className="fa-solid fa-file-pdf"></i>
+              </span>
+              <span>{t("nav.report", "Report")}</span>
+            </NavLink>
           </div>
         )}
 
