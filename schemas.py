@@ -96,6 +96,9 @@ class ScheduleResponse(BaseModel):
     speech_next_date: str
     mbi_days_remaining: int
     speech_days_remaining: int
+    mbi_count: int
+    speech_count: int
+    can_generate_report: bool
     today_task: Optional[str] = None  # "mbi", "speech", or null
 
 

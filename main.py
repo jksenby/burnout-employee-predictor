@@ -18,6 +18,10 @@ from models_db import User, SpeechAnalysis, MBIResult
 from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse, SpeechAnalysisResponse, ReportResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
+from fastapi.responses import StreamingResponse
+from fpdf import FPDF
+import io
+import os
 from auth import get_current_user, get_optional_user
 from routes.auth import router as auth_router
 
@@ -246,10 +250,14 @@ async def get_schedule(
     first_mbi = mbi_results[0] if mbi_count > 0 else None
     last_mbi = mbi_results[-1] if mbi_count > 0 else None
 
-    last_speech = db.query(SpeechAnalysis)\
+    # Speech schedule: Weekly
+    speech_results = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id)\
         .order_by(SpeechAnalysis.created_at.desc())\
-        .first()
+        .all()
+    
+    speech_count = len(speech_results)
+    last_speech = speech_results[0] if speech_count > 0 else None
 
     # MBI schedule: Start (0) and End (60 days after first)
     mbi_due = False
@@ -289,6 +297,9 @@ async def get_schedule(
         speech_next = now.strftime("%Y-%m-%d")
         speech_last_date = None
 
+    # Report availability: 2 MBI and 8 Speech
+    can_generate_report = (mbi_count >= 2) and (speech_count >= 8)
+
     # Priority: MBI > Speech
     today_task = None
     if mbi_due:
@@ -305,6 +316,9 @@ async def get_schedule(
         speech_next_date=speech_next,
         mbi_days_remaining=mbi_days_remaining,
         speech_days_remaining=speech_days_remaining,
+        mbi_count=mbi_count,
+        speech_count=speech_count,
+        can_generate_report=can_generate_report,
         today_task=today_task
     )
 
@@ -464,6 +478,160 @@ async def get_report_data(
         data=report_data,
         cross_validation_failed=cross_val_failed,
         cross_validation_message=cross_validation_message
+    )
+
+
+@app.get("/report/pdf")
+async def generate_pdf_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Check eligibility
+    mbi_count = db.query(MBIResult).filter(MBIResult.user_id == current_user.id).count()
+    speech_count = db.query(SpeechAnalysis).filter(SpeechAnalysis.user_id == current_user.id).count()
+    
+    if mbi_count < 2 or speech_count < 8:
+        raise HTTPException(status_code=403, detail="Requirements not met: 2 MBI and 8 Speech analyses required.")
+        
+    # Get all data
+    speech_analyses = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.user_id == current_user.id)\
+        .order_by(SpeechAnalysis.created_at.asc())\
+        .all()
+        
+    mbi_results = db.query(MBIResult)\
+        .filter(MBIResult.user_id == current_user.id)\
+        .order_by(MBIResult.created_at.asc())\
+        .all()
+
+    # Generate PDF
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Try to load fonts that support Cyrillic
+    font_name = "Cyrillic"
+    font_added = False
+    
+    # Windows paths for Arial (standard, bold, italic)
+    arial_reg = "C:\\Windows\\Fonts\\arial.ttf"
+    arial_bold = "C:\\Windows\\Fonts\\arialbd.ttf"
+    arial_ital = "C:\\Windows\\Fonts\\ariali.ttf"
+    
+    if os.path.exists(arial_reg):
+        try:
+            pdf.add_font(font_name, "", arial_reg)
+            
+            # Add Bold
+            if os.path.exists(arial_bold):
+                pdf.add_font(font_name, "B", arial_bold)
+            else:
+                pdf.add_font(font_name, "B", arial_reg)
+                
+            # Add Italic
+            if os.path.exists(arial_ital):
+                pdf.add_font(font_name, "I", arial_ital)
+            else:
+                pdf.add_font(font_name, "I", arial_reg)
+            
+            pdf.set_font(font_name, size=12)
+            font_added = True
+        except Exception as e:
+            print(f"Error adding Arial font: {e}")
+
+    if not font_added:
+        # Linux fallback (DejaVu)
+        dejavu_reg = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        dejavu_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        dejavu_ital = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"
+        if os.path.exists(dejavu_reg):
+            try:
+                pdf.add_font(font_name, "", dejavu_reg)
+                if os.path.exists(dejavu_bold):
+                    pdf.add_font(font_name, "B", dejavu_bold)
+                else:
+                    pdf.add_font(font_name, "B", dejavu_reg)
+                    
+                if os.path.exists(dejavu_ital):
+                    pdf.add_font(font_name, "I", dejavu_ital)
+                else:
+                    pdf.add_font(font_name, "I", dejavu_reg)
+                    
+                pdf.set_font(font_name, size=12)
+                font_added = True
+            except:
+                pass
+
+    if not font_added:
+        pdf.set_font("Helvetica", size=12)
+        font_name = "Helvetica"
+
+    from fpdf.enums import XPos, YPos
+
+    # Title
+    pdf.set_font(font_name, "B", 16)
+    pdf.cell(0, 10, "Burnout Assessment Report", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.ln(10)
+    
+    # User Info
+    pdf.set_font(font_name, "B", 12)
+    pdf.cell(0, 10, f"Employee: {current_user.username}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font(font_name, "", 12)
+    pdf.cell(0, 10, f"Email: {current_user.email}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, f"Report Date: {datetime.now().strftime('%Y-%m-%d')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(10)
+    
+    # Summary
+    pdf.set_font(font_name, "B", 14)
+    pdf.cell(0, 10, "Assessment Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font(font_name, "", 12)
+    pdf.cell(0, 10, f"- Total MBI Questionnaires: {mbi_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, f"- Total Speech Analyses: {speech_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(5)
+    
+    # MBI Results
+    pdf.set_font(font_name, "B", 14)
+    pdf.cell(0, 10, "MBI Questionnaire Results", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font(font_name, "B", 10)
+    pdf.cell(40, 10, "Date", border=1)
+    pdf.cell(40, 10, "EE Score", border=1)
+    pdf.cell(40, 10, "DP Score", border=1)
+    pdf.cell(40, 10, "PA Score", border=1)
+    pdf.cell(30, 10, "Index", border=1)
+    pdf.ln()
+    
+    pdf.set_font(font_name, "", 10)
+    for res in mbi_results:
+        pdf.cell(40, 10, res.created_at.strftime('%Y-%m-%d'), border=1)
+        pdf.cell(40, 10, str(res.emotional_exhaustion), border=1)
+        pdf.cell(40, 10, str(res.depersonalization), border=1)
+        pdf.cell(40, 10, str(res.personal_accomplishment), border=1)
+        pdf.cell(30, 10, f"{res.burnout_index:.2f}", border=1)
+        pdf.ln()
+    pdf.ln(10)
+    
+    # Speech Results
+    pdf.set_font(font_name, "B", 14)
+    pdf.cell(0, 10, "Speech Analysis History", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    
+    if speech_analyses:
+        avg_score = sum(s.score for s in speech_analyses) / len(speech_analyses)
+        pdf.set_font(font_name, "", 12)
+        pdf.cell(0, 10, f"Average Burnout Risk Score (Acoustics/NLP): {avg_score:.2f}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    
+    # Final Disclaimer
+    pdf.ln(20)
+    pdf.set_font(font_name, "I", 10)
+    pdf.multi_cell(0, 10, "Disclaimer: This report is generated by an AI-based burnout prediction system. It should be used for informational purposes only and does not replace professional medical or psychological advice.")
+
+    # Output to buffer
+    pdf_output = pdf.output()
+    # fpdf2.output() returns bytes by default if no filename is provided
+    buffer = io.BytesIO(pdf_output)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=Burnout_Report_{current_user.username}.pdf"}
     )
 
 

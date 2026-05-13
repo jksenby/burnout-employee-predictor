@@ -70,7 +70,15 @@ const resources = {
         "priority_title": "Scheduling Priority",
         "priority_desc": "The MBI questionnaire is taken only twice: at the very beginning and upon completion of the 2-month experiment. Speech analysis remains weekly.",
         "never": "Never",
-        "error_loading_schedule": "Could not load your schedule."
+        "error_loading_schedule": "Could not load your schedule.",
+        "report_status": "Report Generation Status",
+        "report_ready": "Full Report Ready",
+        "report_locked": "Full Report Locked",
+        "report_desc_ready": "You have completed the required assessments. You can now download your full analysis report.",
+        "report_desc_locked": "To unlock the full PDF report, you need to complete at least 2 MBI questionnaires and 8 speech analyses.",
+        "download_report_btn": "Generate PDF Report",
+        "mbi_progress": "MBI Progress: {{count}}/2",
+        "speech_progress": "Speech Progress: {{count}}/8"
       },
       "history": {
         "title": "My History",
@@ -317,7 +325,15 @@ const resources = {
         "priority_title": "Приоритет планирования",
         "priority_desc": "Опросник MBI проходится только дважды: в самом начале и по завершении 2-месячного эксперимента. Анализ речи остается еженедельным.",
         "never": "Никогда",
-        "error_loading_schedule": "Не удалось загрузить расписание."
+        "error_loading_schedule": "Не удалось загрузить расписание.",
+        "report_status": "Статус формирования отчета",
+        "report_ready": "Полный отчет готов",
+        "report_locked": "Полный отчет заблокирован",
+        "report_desc_ready": "Вы прошли необходимое количество обследований. Теперь вы можете скачать полный аналитический отчет.",
+        "report_desc_locked": "Чтобы разблокировать полный PDF-отчет, вам необходимо пройти как минимум 2 опросника MBI и 8 анализов речи.",
+        "download_report_btn": "Сформировать PDF-отчет",
+        "mbi_progress": "Прогресс MBI: {{count}}/2",
+        "speech_progress": "Прогресс речи: {{count}}/8"
       },
       "history": {
         "title": "Моя история",

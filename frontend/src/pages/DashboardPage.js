@@ -252,6 +252,73 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* ── Report Status Card ── */}
+      <div className={`dash-report-card ${schedule.can_generate_report ? "ready" : "locked"}`}>
+        <div className="dash-report-header">
+          <div className="dash-report-icon">
+            <i className={`fa-solid ${schedule.can_generate_report ? "fa-file-pdf" : "fa-lock"}`}></i>
+          </div>
+          <div className="dash-report-info">
+            <h3 className="dash-report-title">{t("dashboard.report_status")}</h3>
+            <p className="dash-report-desc">
+              {schedule.can_generate_report 
+                ? t("dashboard.report_desc_ready") 
+                : t("dashboard.report_desc_locked")}
+            </p>
+          </div>
+        </div>
+
+        <div className="dash-report-progress">
+          <div className="dash-report-stat">
+            <span>{t("dashboard.mbi_progress", { count: schedule.mbi_count })}</span>
+            <div className="dash-mini-progress">
+              <div 
+                className="dash-mini-fill mbi" 
+                style={{ width: `${Math.min(100, (schedule.mbi_count / 2) * 100)}%` }}
+              ></div>
+            </div>
+          </div>
+          <div className="dash-report-stat">
+            <span>{t("dashboard.speech_progress", { count: schedule.speech_count })}</span>
+            <div className="dash-mini-progress">
+              <div 
+                className="dash-mini-fill speech" 
+                style={{ width: `${Math.min(100, (schedule.speech_count / 8) * 100)}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <button 
+          className="dash-report-btn" 
+          disabled={!schedule.can_generate_report}
+          onClick={async () => {
+            if (schedule.can_generate_report) {
+              try {
+                const response = await fetch("http://localhost:8000/report/pdf", {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!response.ok) throw new Error("Failed to generate report");
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Burnout_Report_${user?.username}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode.removeChild(link);
+              } catch (err) {
+                console.error(err);
+                alert("Failed to download report. Please try again later.");
+              }
+            }
+          }}
+        >
+          <i className="fa-solid fa-download"></i>
+          {t("dashboard.download_report_btn")}
+        </button>
+      </div>
+
       {/* ── Priority Note ── */}
       <div className="dash-priority-note">
         <div className="dash-priority-icon">

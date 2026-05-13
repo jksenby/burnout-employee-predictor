@@ -1582,3 +1582,130 @@ audio.show { display: block; }
     border-color: var(--primary);
     color: var(--primary);
 }
+
+/* ─── Report Card ─── */
+.dash-report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin: 24px auto;
+    max-width: 1000px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.dash-report-card.ready {
+    border-color: var(--primary);
+    background: linear-gradient(to bottom right, #ffffff, #f0fdfa);
+}
+
+.dash-report-card.locked {
+    opacity: 0.9;
+}
+
+.dash-report-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.dash-report-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.ready .dash-report-icon {
+    background: var(--primary-muted);
+    color: var(--primary);
+}
+
+.locked .dash-report-icon {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+.dash-report-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 4px;
+}
+
+.dash-report-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.dash-report-progress {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 500px) {
+    .dash-report-progress {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dash-report-stat {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.dash-mini-progress {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.dash-mini-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+}
+
+.dash-mini-fill.mbi { background: #10b981; }
+.dash-mini-fill.speech { background: #06b6d4; }
+
+.dash-report-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    background: var(--primary);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.dash-report-btn:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3);
+}
+
+.dash-report-btn:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+}

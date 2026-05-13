@@ -47,8 +47,25 @@ const ReportPage = () => {
     fetchReport();
   }, []);
 
-  const handleDownloadPdf = () => {
-    window.print();
+  const handleDownloadPdf = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/report/pdf", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to generate report");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Full_Burnout_Report.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      console.error(err);
+      // Fallback to print if backend fails or for quick local print
+      window.print();
+    }
   };
 
   if (loading) {
