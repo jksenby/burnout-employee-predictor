@@ -5,7 +5,8 @@
       "Bash(Select-Object -First 50)",
       "Bash(Format-Table FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\" -Force)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\\\\frontend\\\\src\" -Recurse | Where-Object { $_.Extension -in @\\('.js', '.jsx', '.tsx', '.ts'\\) })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\\\\frontend\\\\src\" -Recurse | Where-Object { $_.Extension -in @\\('.js', '.jsx', '.tsx', '.ts'\\) })",
+      "Bash(grep -E \"\\\\.\\(js|jsx|py\\)$\")"
     ]
   }
 }

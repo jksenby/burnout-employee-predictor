@@ -12,6 +12,14 @@ import './ReportPage.css';
 const PALETTE = ['#8884d8', '#82ca9d', '#ff7300', '#e84393', '#00C49F', '#FFBB28', '#FF8042'];
 const RISK_COLORS = { 'Low Risk': '#4CAF50', 'Moderate Risk': '#FF9800', 'High Risk': '#f44336' };
 
+const EMOTION_LABELS = {
+  joy: 'Радость', happy: 'Радость', happiness: 'Радость',
+  sadness: 'Грусть', sad: 'Грусть',
+  anger: 'Злость', angry: 'Злость',
+  fear: 'Страх', anxious: 'Тревога', anxiety: 'Тревога',
+  surprise: 'Удивление', disgust: 'Отвращение', neutral: 'Нейтральность',
+};
+
 const getRiskColor = (score) => {
   if (score === null || score === undefined) return '#aaa';
   if (score < 0.4) return '#4CAF50';
@@ -25,6 +33,45 @@ const getRiskLabel = (score, t) => {
   if (score < 0.65) return t('Moderate Risk', 'Умеренный риск');
   return t('High Risk', 'Высокий риск');
 };
+
+const MetricRow = ({ label, value, note, color }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, minHeight: 22 }}>
+    <span style={{ color: '#6b7280' }}>{label}</span>
+    <span style={{ fontWeight: 600, color: color || '#111827' }}>
+      {value}
+      {note && <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 5, fontWeight: 400 }}>({note})</span>}
+    </span>
+  </div>
+);
+
+const MetricBlock = ({ title, accent, children }) => (
+  <div style={{
+    background: '#fff',
+    borderRadius: 12,
+    padding: '18px 20px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+    border: '1px solid #f3f4f6',
+    borderTop: `3px solid ${accent}`,
+  }}>
+    <h3 style={{
+      margin: '0 0 14px',
+      fontSize: 12,
+      fontWeight: 700,
+      color: accent,
+      textTransform: 'uppercase',
+      letterSpacing: '0.6px',
+    }}>
+      {title}
+    </h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {children}
+    </div>
+  </div>
+);
+
+const Divider = () => (
+  <div style={{ borderTop: '1px solid #f3f4f6', margin: '4px 0' }} />
+);
 
 const ReportPage = () => {
   const { t } = useTranslation();
@@ -98,6 +145,85 @@ const ReportPage = () => {
 
     return { totalSpeech: speeches.length, totalMbi: mbis.length, avgSpeech, latestMbi, trend };
   }, [historyData, reportData]);
+
+  // ── Verdict: first-vs-last comparison + narrative ──
+  const verdictData = useMemo(() => {
+    if (!historyData) return null;
+    const speeches = historyData.speech_analyses || []; // DESC: index 0 = newest
+    const mbis = historyData.mbi_results || [];
+
+    const newestSpeech = speeches[0] || null;
+    const oldestSpeech = speeches.length > 1 ? speeches[speeches.length - 1] : null;
+    const speechDelta = oldestSpeech && newestSpeech ? newestSpeech.score - oldestSpeech.score : null;
+    const speechTrend = speechDelta === null ? 'stable'
+      : speechDelta > 0.05 ? 'worsening' : speechDelta < -0.05 ? 'improving' : 'stable';
+
+    const newestMbi = mbis[0] || null;
+    const oldestMbi = mbis.length > 1 ? mbis[mbis.length - 1] : null;
+    const mbiDelta = oldestMbi && newestMbi ? newestMbi.burnout_index - oldestMbi.burnout_index : null;
+    const mbiTrend = mbiDelta === null ? 'stable'
+      : mbiDelta > 0.05 ? 'worsening' : mbiDelta < -0.05 ? 'improving' : 'stable';
+
+    let overallTrend = 'stable';
+    if (speechTrend === 'worsening' || mbiTrend === 'worsening') overallTrend = 'worsening';
+    else if (speechTrend === 'improving' || mbiTrend === 'improving') overallTrend = 'improving';
+
+    const withText = speeches.filter(s => s.text_analysis);
+    const avg = (arr, fn) => arr.length > 0 ? arr.reduce((s, x) => s + (fn(x) || 0), 0) / arr.length : null;
+    const avgSentiment = avg(withText, s => s.text_analysis.sentiment_polarity);
+    const avgAbsolutist = avg(withText, s => s.text_analysis.absolutist_index);
+    const avgNegRatio = avg(withText, s => s.text_analysis.negative_word_ratio);
+
+    const emotionTotals = {};
+    speeches.forEach(s => s.emotions && Object.entries(s.emotions).forEach(([k, v]) => {
+      emotionTotals[k] = (emotionTotals[k] || 0) + v;
+    }));
+    const topEmotion = Object.entries(emotionTotals).sort((a, b) => b[1] - a[1])[0];
+    const dominantEmotion = topEmotion?.[0] || null;
+    const dominantEmotionLabel = dominantEmotion ? (EMOTION_LABELS[dominantEmotion] || dominantEmotion) : null;
+
+    const riskCounts = { 'Low Risk': 0, 'Moderate Risk': 0, 'High Risk': 0 };
+    speeches.forEach(s => { if (s.label) riskCounts[s.label] = (riskCounts[s.label] || 0) + 1; });
+
+    const spPct = speechDelta !== null ? Math.abs(speechDelta * 100).toFixed(1) : null;
+    const mbPct = mbiDelta !== null ? Math.abs(mbiDelta * 100).toFixed(1) : null;
+
+    let narrative;
+    if (speeches.length < 2 && mbis.length < 2) {
+      narrative = 'Недостаточно данных для анализа динамики. Пройдите больше сессий, чтобы система могла отследить изменения.';
+    } else if (overallTrend === 'improving') {
+      if (speechTrend === 'improving' && mbiTrend === 'improving') {
+        narrative = `За период наблюдения отмечается устойчивая положительная динамика. Акустический риск снизился на ${spPct}%, индекс MBI уменьшился на ${mbPct}%.`;
+      } else if (speechTrend === 'improving') {
+        narrative = `Акустические показатели улучшились: риск снизился на ${spPct}% относительно первой записи.${mbiDelta !== null ? ' Показатели MBI остаются стабильными.' : ''}`;
+      } else {
+        narrative = `Индекс выгорания по MBI снизился на ${mbPct}%.${speechDelta !== null ? ' Акустические показатели остаются стабильными.' : ''}`;
+      }
+    } else if (overallTrend === 'worsening') {
+      if (speechTrend === 'worsening' && mbiTrend === 'worsening') {
+        narrative = `За период наблюдения риск выгорания вырос по обоим источникам. Акустический риск увеличился на ${spPct}%, индекс MBI вырос на ${mbPct}%. Рекомендуется обратиться к специалисту.`;
+      } else if (speechTrend === 'worsening') {
+        narrative = `Акустический риск вырос на ${spPct}% относительно первой записи.${mbiDelta !== null ? ' Показатели MBI в норме.' : ''} Рекомендуется следить за динамикой.`;
+      } else {
+        narrative = `Индекс выгорания по MBI вырос на ${mbPct}%.${speechDelta !== null ? ' Акустические показатели стабильны.' : ''} Рекомендуется пройти дополнительную оценку.`;
+      }
+    } else {
+      narrative = `Показатели остаются стабильными на протяжении всего периода наблюдения.${speeches.length > 1 || mbis.length > 1 ? ' Значительных изменений не выявлено.' : ''}`;
+    }
+
+    if (avgSentiment !== null && avgSentiment < -0.3) {
+      narrative += ` Тональность речи выражено негативная (${avgSentiment.toFixed(2)}), что может свидетельствовать о психологическом напряжении.`;
+    }
+
+    return {
+      overallTrend, speechTrend, mbiTrend,
+      speechDelta, mbiDelta,
+      newestSpeech, oldestSpeech, newestMbi, oldestMbi,
+      avgSentiment, avgAbsolutist, avgNegRatio,
+      dominantEmotion, dominantEmotionLabel,
+      riskCounts, narrative,
+    };
+  }, [historyData]);
 
   const mbiSubScaleData = useMemo(() => {
     if (!historyData) return [];
@@ -202,11 +328,13 @@ const ReportPage = () => {
   }
 
   const trendInfo = {
-    improving: { icon: '↓', label: t('Improving', 'Улучшается'), color: '#4CAF50' },
-    worsening: { icon: '↑', label: t('Worsening', 'Ухудшается'), color: '#f44336' },
-    stable: { icon: '→', label: t('Stable', 'Стабильно'), color: '#FF9800' },
+    improving: { icon: '↓', label: 'Улучшение', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+    worsening: { icon: '↑', label: 'Ухудшение', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+    stable:    { icon: '→', label: 'Стабильно',  color: '#d97706', bg: '#fffbeb', border: '#fcd34d' },
   };
-  const trend = summaryStats?.trend || 'stable';
+
+  const overallTrend = verdictData?.overallTrend || summaryStats?.trend || 'stable';
+  const ti = trendInfo[overallTrend];
 
   return (
     <div className="report-container">
@@ -232,48 +360,205 @@ const ReportPage = () => {
         </div>
       )}
 
-      {/* ── Summary cards ── */}
-      {summaryStats && (
-        <div className="summary-cards">
-          <div className="stat-card">
-            <div className="stat-label">{t('Avg. Acoustic Risk', 'Ср. акустический риск')}</div>
-            <div className="stat-value" style={{ color: getRiskColor(summaryStats.avgSpeech) }}>
-              {summaryStats.avgSpeech !== null ? `${(summaryStats.avgSpeech * 100).toFixed(1)}%` : '—'}
+      {/* ═══════════════════════════════════════════════
+          1. ВЕРДИКТ — был ли прогресс или регресс
+      ═══════════════════════════════════════════════ */}
+      {verdictData && (
+        <div style={{
+          background: ti.bg,
+          border: `2px solid ${ti.border}`,
+          borderRadius: 14,
+          padding: '22px 26px',
+          marginBottom: 28,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 20,
+        }}>
+          <div style={{ fontSize: 48, lineHeight: 1, color: ti.color, flexShrink: 0, fontWeight: 300 }}>
+            {ti.icon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: ti.color, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>
+              Итог периода наблюдения
             </div>
-            <div className="stat-sub">{getRiskLabel(summaryStats.avgSpeech, t)}</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">{t('Latest MBI Index', 'Последний индекс MBI')}</div>
-            <div className="stat-value" style={{ color: getRiskColor(summaryStats.latestMbi) }}>
-              {summaryStats.latestMbi !== null ? `${(summaryStats.latestMbi * 100).toFixed(1)}%` : '—'}
+            <h2 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 700, color: ti.color }}>
+              {ti.label}
+            </h2>
+            <p style={{ margin: '0 0 14px', fontSize: 15, lineHeight: 1.7, color: '#374151' }}>
+              {verdictData.narrative}
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {verdictData.speechDelta !== null && (
+                <span style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: `1px solid ${trendInfo[verdictData.speechTrend].border}`,
+                  borderRadius: 20,
+                  padding: '3px 12px',
+                  fontSize: 13,
+                  color: trendInfo[verdictData.speechTrend].color,
+                  fontWeight: 600,
+                }}>
+                  Речь: {verdictData.speechDelta > 0 ? '+' : ''}{(verdictData.speechDelta * 100).toFixed(1)}%
+                </span>
+              )}
+              {verdictData.mbiDelta !== null && (
+                <span style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: `1px solid ${trendInfo[verdictData.mbiTrend].border}`,
+                  borderRadius: 20,
+                  padding: '3px 12px',
+                  fontSize: 13,
+                  color: trendInfo[verdictData.mbiTrend].color,
+                  fontWeight: 600,
+                }}>
+                  MBI: {verdictData.mbiDelta > 0 ? '+' : ''}{(verdictData.mbiDelta * 100).toFixed(1)}%
+                </span>
+              )}
+              {verdictData.dominantEmotionLabel && (
+                <span style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 20,
+                  padding: '3px 12px',
+                  fontSize: 13,
+                  color: '#6b7280',
+                }}>
+                  Преобл. эмоция: {verdictData.dominantEmotionLabel}
+                </span>
+              )}
             </div>
-            <div className="stat-sub">{getRiskLabel(summaryStats.latestMbi, t)}</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">{t('Speech Sessions', 'Речевых сессий')}</div>
-            <div className="stat-value" style={{ color: '#8884d8' }}>{summaryStats.totalSpeech}</div>
-            <div className="stat-sub">{t('Total Recorded', 'Всего записей')}</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">{t('MBI Tests', 'Тестов MBI')}</div>
-            <div className="stat-value" style={{ color: '#82ca9d' }}>{summaryStats.totalMbi}</div>
-            <div className="stat-sub">{t('Completed', 'Завершено')}</div>
-          </div>
-
-          <div className="stat-card">
-            <div className="stat-label">{t('Burnout Trend', 'Тенденция')}</div>
-            <div className="stat-value trend-value" style={{ color: trendInfo[trend].color }}>
-              {trendInfo[trend].icon} {trendInfo[trend].label}
-            </div>
-            <div className="stat-sub">{t('vs. first half', 'vs. первая половина')}</div>
           </div>
         </div>
       )}
 
-      {/* ── Charts ── */}
+      {/* ═══════════════════════════════════════════════
+          2. ЦИФРЫ — все показатели из БД
+      ═══════════════════════════════════════════════ */}
+      {verdictData && summaryStats && (
+        <div style={{ marginBottom: 36 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 16px' }}>
+            Ключевые показатели
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(265px, 1fr))', gap: 16 }}>
+
+            {/* — Речевой анализ — */}
+            {historyData.speech_analyses?.length > 0 && (
+              <MetricBlock title="Речевой анализ" accent="#8884d8">
+                <MetricRow label="Всего сессий" value={summaryStats.totalSpeech} />
+                <MetricRow
+                  label="Средний риск"
+                  value={`${(summaryStats.avgSpeech * 100).toFixed(1)}%`}
+                  color={getRiskColor(summaryStats.avgSpeech)}
+                  note={getRiskLabel(summaryStats.avgSpeech, t)}
+                />
+                {verdictData.oldestSpeech && verdictData.newestSpeech && (
+                  <MetricRow
+                    label="Первая → Последняя"
+                    value={`${(verdictData.oldestSpeech.score * 100).toFixed(1)}% → ${(verdictData.newestSpeech.score * 100).toFixed(1)}%`}
+                    color={trendInfo[verdictData.speechTrend].color}
+                  />
+                )}
+                <Divider />
+                <MetricRow label="Низкий риск" value={`${verdictData.riskCounts['Low Risk']} сес.`} color="#16a34a" />
+                <MetricRow label="Умеренный риск" value={`${verdictData.riskCounts['Moderate Risk']} сес.`} color="#d97706" />
+                <MetricRow label="Высокий риск" value={`${verdictData.riskCounts['High Risk']} сес.`} color="#dc2626" />
+              </MetricBlock>
+            )}
+
+            {/* — Тест MBI — */}
+            {historyData.mbi_results?.length > 0 && (() => {
+              const m = historyData.mbi_results[0];
+              const eeColor = m.emotional_exhaustion > 32 ? '#dc2626' : m.emotional_exhaustion > 18 ? '#d97706' : '#16a34a';
+              const dpColor = m.depersonalization > 18 ? '#dc2626' : m.depersonalization > 10 ? '#d97706' : '#16a34a';
+              const paColor = m.personal_accomplishment < 19 ? '#dc2626' : m.personal_accomplishment < 30 ? '#d97706' : '#16a34a';
+              const raColor = m.reduction_of_achievements > 19 ? '#dc2626' : m.reduction_of_achievements > 13 ? '#d97706' : '#16a34a';
+              return (
+                <MetricBlock title="Тест MBI (последний)" accent="#82ca9d">
+                  <MetricRow label="Тестов пройдено" value={summaryStats.totalMbi} />
+                  <MetricRow
+                    label="Индекс выгорания"
+                    value={`${(m.burnout_index * 100).toFixed(1)}%`}
+                    color={getRiskColor(m.burnout_index)}
+                    note={getRiskLabel(m.burnout_index, t)}
+                  />
+                  {verdictData.mbiDelta !== null && (
+                    <MetricRow
+                      label="Первый → Последний"
+                      value={`${(verdictData.oldestMbi.burnout_index * 100).toFixed(1)}% → ${(verdictData.newestMbi.burnout_index * 100).toFixed(1)}%`}
+                      color={trendInfo[verdictData.mbiTrend].color}
+                    />
+                  )}
+                  <Divider />
+                  <MetricRow
+                    label="Эмоц. истощение"
+                    value={`${m.emotional_exhaustion} / 54`}
+                    note={`${((m.emotional_exhaustion / 54) * 100).toFixed(0)}%`}
+                    color={eeColor}
+                  />
+                  <MetricRow
+                    label="Деперсонализация"
+                    value={`${m.depersonalization} / 30`}
+                    note={`${((m.depersonalization / 30) * 100).toFixed(0)}%`}
+                    color={dpColor}
+                  />
+                  <MetricRow
+                    label="Личн. достижения"
+                    value={`${m.personal_accomplishment} / 48`}
+                    note={`${((m.personal_accomplishment / 48) * 100).toFixed(0)}%`}
+                    color={paColor}
+                  />
+                  {m.reduction_of_achievements !== undefined && m.reduction_of_achievements !== null && (
+                    <MetricRow
+                      label="Редукция достижений"
+                      value={`${m.reduction_of_achievements} / 32`}
+                      note={`${((m.reduction_of_achievements / 32) * 100).toFixed(0)}%`}
+                      color={raColor}
+                    />
+                  )}
+                </MetricBlock>
+              );
+            })()}
+
+            {/* — Лингвистика — */}
+            {verdictData.avgSentiment !== null && (
+              <MetricBlock title="Лингвистические признаки" accent="#ff7300">
+                <MetricRow
+                  label="Тональность речи"
+                  value={verdictData.avgSentiment.toFixed(3)}
+                  note={verdictData.avgSentiment < -0.2 ? 'негативная' : verdictData.avgSentiment > 0.2 ? 'позитивная' : 'нейтральная'}
+                  color={verdictData.avgSentiment < -0.2 ? '#dc2626' : verdictData.avgSentiment > 0.2 ? '#16a34a' : '#d97706'}
+                />
+                {verdictData.avgAbsolutist !== null && (
+                  <MetricRow
+                    label="Индекс абсолютизма"
+                    value={verdictData.avgAbsolutist.toFixed(3)}
+                    note={verdictData.avgAbsolutist > 0.3 ? 'высокий' : verdictData.avgAbsolutist > 0 ? 'умеренный' : 'низкий'}
+                    color={verdictData.avgAbsolutist > 0.3 ? '#dc2626' : undefined}
+                  />
+                )}
+                {verdictData.avgNegRatio !== null && (
+                  <MetricRow
+                    label="Доля негат. слов"
+                    value={`${(verdictData.avgNegRatio * 100).toFixed(1)}%`}
+                    color={verdictData.avgNegRatio > 0.3 ? '#dc2626' : verdictData.avgNegRatio > 0.15 ? '#d97706' : '#16a34a'}
+                  />
+                )}
+                {verdictData.dominantEmotionLabel && (
+                  <MetricRow label="Преобл. эмоция" value={verdictData.dominantEmotionLabel} />
+                )}
+              </MetricBlock>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          3. ГРАФИКИ
+      ═══════════════════════════════════════════════ */}
+      <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 16px' }}>
+        Графики
+      </h2>
       <div className="charts-grid">
 
         {/* 1. Burnout Risk Area Chart */}
@@ -359,7 +644,7 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 5. Emotion Distribution (horizontal bar) */}
+        {/* 5. Emotion Distribution */}
         {emotionData.length > 0 && (
           <div className="chart-card">
             <h2 className="chart-title">{t('Avg. Emotion Distribution', 'Среднее распределение эмоций')}</h2>
