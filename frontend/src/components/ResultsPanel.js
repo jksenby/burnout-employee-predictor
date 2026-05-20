@@ -151,7 +151,7 @@ const ResultsPanel = ({ data }) => {
       <div className="transcript-panel">
         <div className="panel-header">
           <span className="panel-icon"><i className="fa-solid fa-comment-dots"></i></span>
-          <span className="panel-title" style={{ color: '#67e8f9' }}>{t("results_panel.transcript_title")}</span>
+          <span className="panel-title" style={{ color: '#0d9488' }}>{t("results_panel.transcript_title")}</span>
         </div>
         <div className="transcript-text">{transcript || '—'}</div>
       </div>

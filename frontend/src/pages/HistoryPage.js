@@ -69,7 +69,7 @@ const HistoryPage = () => {
           <h2
             style={{
               marginBottom: "20px",
-              borderBottom: "1px solid #333",
+              borderBottom: "1px solid var(--border)",
               paddingBottom: "10px",
             }}
           >
@@ -89,7 +89,7 @@ const HistoryPage = () => {
           <h2
             style={{
               marginBottom: "20px",
-              borderBottom: "1px solid #333",
+              borderBottom: "1px solid var(--border)",
               paddingBottom: "10px",
             }}
           >
@@ -109,14 +109,14 @@ const HistoryPage = () => {
           <h2
             style={{
               marginBottom: "20px",
-              borderBottom: "1px solid #333",
+              borderBottom: "1px solid var(--border)",
               paddingBottom: "10px",
             }}
           >
             <i className="fa-solid fa-clipboard-list"></i> {t("history.mbi_questionnaires")}
           </h2>
           {history.mbi_results.length === 0 ? (
-            <p style={{ color: "#888" }}>
+            <p style={{ color: "var(--text-muted)" }}>
               {t("history.no_mbi")}
             </p>
           ) : (

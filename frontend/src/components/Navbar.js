@@ -113,7 +113,10 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               <NavLink to="/profile" className="user-badge-link">
-                <span className="user-badge">{user?.username}</span>
+                <span className="user-badge">
+                  <i className="fa-solid fa-circle-user"></i>
+                  {user?.username}
+                </span>
               </NavLink>
               <button className="logout-btn" onClick={handleLogout}>
                 {t("nav.logout")}

@@ -79,7 +79,14 @@ const resources = {
         "report_desc_locked": "To unlock the full PDF report, you need to complete at least 2 MBI questionnaires and 8 speech analyses.",
         "download_report_btn": "Generate PDF Report",
         "mbi_progress": "MBI Progress: {{count}}/2",
-        "speech_progress": "Speech Progress: {{count}}/8"
+        "speech_progress": "Speech Progress: {{count}}/8",
+        "next_step": "Your next step",
+        "time_mbi": "~5 min",
+        "time_speech": "~60 sec",
+        "priority_first": "Complete MBI first, then Speech Analysis",
+        "then_speech": "After this: Speech Analysis",
+        "then_mbi": "After this: MBI Questionnaire",
+        "priority_note_short": "MBI is taken twice only (start & end of the 2-month experiment). Speech analysis is weekly."
       },
       "history": {
         "title": "My History",
@@ -345,7 +352,14 @@ const resources = {
         "report_desc_locked": "Чтобы разблокировать полный PDF-отчет, вам необходимо пройти как минимум 2 опросника MBI и 8 анализов речи.",
         "download_report_btn": "Сформировать PDF-отчет",
         "mbi_progress": "Прогресс MBI: {{count}}/2",
-        "speech_progress": "Прогресс речи: {{count}}/8"
+        "speech_progress": "Прогресс речи: {{count}}/8",
+        "next_step": "Ваш следующий шаг",
+        "time_mbi": "~5 мин",
+        "time_speech": "~60 сек",
+        "priority_first": "Сначала MBI, затем анализ речи",
+        "then_speech": "После этого: Анализ речи",
+        "then_mbi": "После этого: Опросник MBI",
+        "priority_note_short": "MBI проходится только дважды (начало и конец 2-месячного эксперимента). Анализ речи — еженедельно."
       },
       "history": {
         "title": "Моя история",
@@ -603,7 +617,14 @@ const resources = {
         "priority_title": "Жоспарлау басымдылығы",
         "priority_desc": "MBI сауалнамасы тек екі рет алынады: 2 айлық эксперименттің ең басында және аяқталғаннан кейін. Сөйлеуді талдау апта сайын қалады.",
         "never": "Ешқашан",
-        "error_loading_schedule": "Кестені жүктеу мүмкін болмады."
+        "error_loading_schedule": "Кестені жүктеу мүмкін болмады.",
+        "next_step": "Келесі қадамыңыз",
+        "time_mbi": "~5 мин",
+        "time_speech": "~60 сек",
+        "priority_first": "Алдымен MBI, содан кейін сөйлеуді талдау",
+        "then_speech": "Одан кейін: Сөйлеуді талдау",
+        "then_mbi": "Одан кейін: MBI сауалнамасы",
+        "priority_note_short": "MBI тек екі рет өтіледі (эксперименттің басы мен соңы). Сөйлеуді талдау — апта сайын."
       },
       "history": {
         "title": "Менің тарихым",

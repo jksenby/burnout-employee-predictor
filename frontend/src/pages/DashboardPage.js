@@ -87,6 +87,7 @@ const DashboardPage = () => {
             </>
           ) : (
             <>
+              <p className="dash-hero-step-label">{t("dashboard.next_step")}</p>
               <div className="dash-hero-icon">
                 {schedule.today_task === "mbi" ? (
                   <i className="fa-solid fa-clipboard-list"></i>
@@ -99,15 +100,22 @@ const DashboardPage = () => {
                   ? t("dashboard.mbi_due")
                   : t("dashboard.speech_due")}
               </h2>
-              <p className="dash-hero-desc">
-                {schedule.today_task === "mbi"
-                  ? t("dashboard.mbi_desc")
-                  : t("dashboard.speech_desc")}
-              </p>
+              <div className="dash-hero-pills">
+                <span className="dash-hero-pill">
+                  <i className="fa-regular fa-clock"></i>
+                  {schedule.today_task === "mbi"
+                    ? t("dashboard.time_mbi")
+                    : t("dashboard.time_speech")}
+                </span>
+                <span className="dash-hero-pill urgent">
+                  <i className="fa-solid fa-circle-exclamation"></i>
+                  {t("dashboard.due_now")}
+                </span>
+              </div>
               {bothDue && (
                 <div className="dash-hero-badge">
                   <span className="dash-badge-dot"></span>
-                  {t("dashboard.both_due")}
+                  {t("dashboard.priority_first")}
                 </div>
               )}
               <button
@@ -131,6 +139,14 @@ const DashboardPage = () => {
                   />
                 </svg>
               </button>
+              {bothDue && (
+                <p className="dash-hero-then">
+                  <i className="fa-solid fa-arrow-right-long"></i>
+                  {schedule.today_task === "mbi"
+                    ? t("dashboard.then_speech")
+                    : t("dashboard.then_mbi")}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -321,18 +337,11 @@ const DashboardPage = () => {
         </button>
       </div>
 
-      {/* ── Priority Note ── */}
-      <div className="dash-priority-note">
-        <div className="dash-priority-icon">
-          <i className="fa-solid fa-lightbulb"></i>
-        </div>
-        <div>
-          <strong>{t("dashboard.priority_title")}</strong>
-          <p>
-            {t("dashboard.priority_desc")}
-          </p>
-        </div>
-      </div>
+      {/* ── Footnote ── */}
+      <p className="dash-footnote">
+        <i className="fa-solid fa-circle-info"></i>
+        {t("dashboard.priority_note_short")}
+      </p>
     </>
   );
 };
