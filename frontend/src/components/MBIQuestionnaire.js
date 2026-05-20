@@ -2,103 +2,108 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
-// Questions are now managed via i18next resources
-
 const MBIQuestionnaire = () => {
   const { t } = useTranslation();
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [answers, setAnswers] = useState({});
 
   const MBI_QUESTIONS = t("mbi.questions", { returnObjects: true });
+  const scaleOptions = t("mbi.scale_options", { returnObjects: true });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (loading) return;
+  const handleAnswer = async (value) => {
+    const newAnswers = { ...answers, [`q${currentIdx}`]: value };
+    setAnswers(newAnswers);
 
-    const formData = new FormData(e.target);
-    const answers = {};
-    for (let i = 0; i < MBI_QUESTIONS.length; i++) {
-      const ans = formData.get(`q${i}`);
-      if (!ans) {
-        alert(t("mbi.please_answer", { num: i + 1 }));
-        return;
-      }
-      answers[`q${i}`] = parseInt(ans, 10);
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch("http://localhost:8000/mbi/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ answers })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to submit questionnaire");
-      }
-
-      setSubmitted(true);
-    } catch (err) {
+    if (currentIdx < MBI_QUESTIONS.length - 1) {
+      setCurrentIdx(currentIdx + 1);
+    } else {
+      setLoading(true);
+      try {
+        const response = await fetch("http://localhost:8000/mbi/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ answers: newAnswers })
+        });
+        if (!response.ok) throw new Error("Failed to submit questionnaire");
+        setSubmitted(true);
+      } catch (err) {
         console.error(err);
         alert(err.message);
-    } finally {
+      } finally {
         setLoading(false);
+      }
     }
   };
 
+  const handleReset = () => {
+    setSubmitted(false);
+    setCurrentIdx(0);
+    setAnswers({});
+  };
+
+  if (loading) {
+    return (
+      <div className="mbi-container mbi-mcq-container" style={{ textAlign: 'center', padding: '60px' }}>
+        <p style={{ color: 'var(--text-muted)' }}>{t("mbi.submitting")}</p>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
-      <div className="mbi-container" style={{ textAlign: "center", padding: "40px" }}>
+      <div className="mbi-container mbi-mcq-container" style={{ textAlign: "center", padding: "40px" }}>
         <h2>{t("mbi.thank_you")}</h2>
-        <p style={{ color: "#aaa" }}>{t("mbi.success_msg")}</p>
-        <button className="button" style={{ marginTop: '20px' }} onClick={() => setSubmitted(false)}>
+        <p style={{ color: "#aaa", marginTop: '8px' }}>{t("mbi.success_msg")}</p>
+        <button className="button" style={{ marginTop: '24px' }} onClick={handleReset}>
           {t("mbi.take_again")}
         </button>
       </div>
     );
   }
 
+  const progress = (currentIdx / MBI_QUESTIONS.length) * 100;
+
   return (
-  <div className="mbi-container">
-    <div className="mbi-intro">
-      <p>{t("mbi.intro")}</p>
-      <p className="subtitle">{t("mbi.freq_subtitle")}</p>
-    </div>
-
-    <div className="mbi-scale-legend">
-      <div><strong>0</strong><br/>{t("mbi.scale.never")}</div>
-      <div><strong>1</strong><br/>{t("mbi.scale.few_times_year")}</div>
-      <div><strong>2</strong><br/>{t("mbi.scale.once_month")}</div>
-      <div><strong>3</strong><br/>{t("mbi.scale.few_times_month")}</div>
-      <div><strong>4</strong><br/>{t("mbi.scale.once_week")}</div>
-      <div><strong>5</strong><br/>{t("mbi.scale.few_times_week")}</div>
-      <div><strong>6</strong><br/>{t("mbi.scale.every_day")}</div>
-    </div>
-
-    <form onSubmit={handleSubmit}>
-      {MBI_QUESTIONS.map((q, idx) => (
-        <div key={idx} className="mbi-question-item">
-          <div className="mbi-question-text">{idx + 1}. {q}</div>
-          <div className="mbi-options">
-            {[0, 1, 2, 3, 4, 5, 6].map((val) => (
-              <div key={val} className="mbi-option">
-                <input type="radio" name={`q${idx}`} value={val} />
-                <label>{val}</label>
-              </div>
-            ))}
-          </div>
+    <div className="mbi-container mbi-mcq-container">
+      <div className="mbi-mcq-header">
+        <span className="mbi-mcq-progress-text">
+          {t("mbi.question_of", { current: currentIdx + 1, total: MBI_QUESTIONS.length })}
+        </span>
+        <div className="mbi-mcq-progress-bar">
+          <div className="mbi-mcq-progress-fill" style={{ width: `${progress}%` }} />
         </div>
-      ))}
-      <button type="submit" className="button" style={{ marginTop: '20px' }} disabled={loading}>
-        {loading ? t("mbi.submitting") : t("mbi.submit_btn")}
-      </button>
-    </form>
-  </div>
-)};
+      </div>
+
+      <div className="mbi-mcq-question">
+        <p className="mbi-mcq-question-text">{MBI_QUESTIONS[currentIdx]}</p>
+      </div>
+
+      <div className="mbi-mcq-options">
+        {scaleOptions.map((label, i) => (
+          <button
+            key={i}
+            className="mbi-mcq-btn"
+            onClick={() => handleAnswer(i)}
+          >
+            <span className="mbi-mcq-btn-index">{i}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {currentIdx > 0 && (
+        <button className="mbi-mcq-back-btn" onClick={() => setCurrentIdx(currentIdx - 1)}>
+          ← {t("mbi.back")}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export default MBIQuestionnaire;

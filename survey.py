@@ -9,8 +9,8 @@ class MBIProcessor:
         }
 
     def get_burnout_status(self, answers):
-        # Расчет баллов (ответы от 0 до 6)
+        # Расчет баллов (ответы от 0 до 4)
         scores = {k: sum(answers[i] for i in v) for k, v in self.indices.items()}
-        # Высокое выгорание: EE >= 27 ИЛИ DP >= 10
-        is_high_risk = scores["EE"] >= 27 or scores["DP"] >= 10
+        # Высокое выгорание: EE >= 18 ИЛИ DP >= 7 (порог скорректирован под шкалу 0-4)
+        is_high_risk = scores["EE"] >= 18 or scores["DP"] >= 7
         return {"risk": "HIGH" if is_high_risk else "NORMAL", "details": scores}

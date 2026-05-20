@@ -499,6 +499,128 @@ audio.show { display: block; }
     cursor: pointer;
 }
 
+/* MBI MCQ format */
+.mbi-mcq-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.mbi-mcq-header {
+    margin-bottom: 44px;
+}
+
+.mbi-mcq-progress-text {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.mbi-mcq-progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.mbi-mcq-progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.35s ease;
+}
+
+.mbi-mcq-question {
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 36px;
+    padding: 0 8px;
+}
+
+.mbi-mcq-question-text {
+    font-size: 20px;
+    color: var(--text-main);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.mbi-mcq-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mbi-mcq-btn {
+    width: 100%;
+    padding: 14px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text-main);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.mbi-mcq-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-muted);
+    transform: translateX(4px);
+}
+
+.mbi-mcq-btn:active {
+    transform: translateX(2px) scale(0.99);
+}
+
+.mbi-mcq-btn-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mbi-mcq-btn:hover .mbi-mcq-btn-index {
+    background: var(--primary);
+    color: #fff;
+}
+
+.mbi-mcq-back-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 6px 0;
+    display: block;
+    transition: color 0.15s ease;
+}
+
+.mbi-mcq-back-btn:hover {
+    color: var(--text-main);
+}
+
 /* ─── Input Tabs (Upload / Record) ─── */
 .input-tabs {
     display: flex;

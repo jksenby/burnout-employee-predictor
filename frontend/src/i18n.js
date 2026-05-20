@@ -200,16 +200,10 @@ const resources = {
         "title": "MBI Questionnaire",
         "subtitle": "Maslach Burnout Inventory (MBI) — Self-Assessment",
         "intro": "Please read each statement carefully and decide if you ever feel this way about your job.",
-        "freq_subtitle": "Select the number that best describes how frequently you feel that way.",
-        "scale": {
-          "never": "Never",
-          "few_times_year": "A few times a year",
-          "once_month": "Once a month",
-          "few_times_month": "A few times a month",
-          "once_week": "Once a week",
-          "few_times_week": "A few times a week",
-          "every_day": "Every day"
-        },
+        "freq_subtitle": "How often do you feel this way?",
+        "scale_options": ["Never", "Rarely", "Sometimes", "Often", "Always"],
+        "question_of": "Question {{current}} of {{total}}",
+        "back": "Back",
         "questions": [
           "I feel emotionally drained from my work.",
           "I feel used up at the end of the workday.",
@@ -473,16 +467,10 @@ const resources = {
         "title": "Опросник MBI",
         "subtitle": "Инвентаризация выгорания Маслач (MBI) — Самооценка",
         "intro": "Пожалуйста, внимательно прочитайте каждое утверждение и решите, чувствуете ли вы себя так на своей работе.",
-        "freq_subtitle": "Выберите число, которое лучше всего описывает, как часто вы это чувствуете.",
-        "scale": {
-          "never": "Никогда",
-          "few_times_year": "Несколько раз в год",
-          "once_month": "Раз в месяц",
-          "few_times_month": "Несколько раз в месяц",
-          "once_week": "Раз в неделю",
-          "few_times_week": "Несколько раз в неделю",
-          "every_day": "Каждый день"
-        },
+        "freq_subtitle": "Как часто вы это чувствуете?",
+        "scale_options": ["Никогда", "Редко", "Иногда", "Часто", "Всегда"],
+        "question_of": "Вопрос {{current}} из {{total}}",
+        "back": "Назад",
         "questions": [
           "Я чувствую себя эмоционально истощенным из-за своей работы.",
           "Я чувствую себя израсходованным в конце рабочего дня.",
@@ -738,16 +726,10 @@ const resources = {
         "title": "MBI сауалнамасы",
         "subtitle": "Маслачтың күйіп кету инвентаризациясы (MBI) — Өзін-өзі бағалау",
         "intro": "Әрбір мәлімдемені мұқият оқып шығыңыз және жұмысыңыз туралы осылай сезінетініңізді шешіңіз.",
-        "freq_subtitle": "Осылай сезіну жиілігін ең жақсы сипаттайтын санды таңдаңыз.",
-        "scale": {
-          "never": "Ешқашан",
-          "few_times_year": "Жылына бірнеше рет",
-          "once_month": "Айына бір рет",
-          "few_times_month": "Айына бірнеше рет",
-          "once_week": "Аптасына бір рет",
-          "few_times_week": "Аптасына бірнеше рет",
-          "every_day": "Күн сайын"
-        },
+        "freq_subtitle": "Мұны қаншалықты жиі сезінесіз?",
+        "scale_options": ["Ешқашан", "Сирек", "Кейде", "Жиі", "Әрдайым"],
+        "question_of": "{{current}}/{{total}} сұрақ",
+        "back": "Артқа",
         "questions": [
           "Мен жұмысымнан эмоционалды түрде шаршағанымды сезінемін.",
           "Мен жұмыс күнінің соңында өзімді таусылғандай сезінемін.",

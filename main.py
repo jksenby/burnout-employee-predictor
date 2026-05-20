@@ -175,12 +175,12 @@ async def submit_mbi(
         dp_score = sum(answers.get(f"q{i}", 0) for i in dp_indices)
         pa_score = sum(answers.get(f"q{i}", 0) for i in pa_indices)
         
-        reduction_score = 48 - pa_score
-        
-        # Systemic Burnout Syndrome Index (geometric formula)
-        # SBSI = sqrt((EE/54)^2 + (DP/30)^2 + ((48-PA)/48)^2) / sqrt(3)
+        reduction_score = 32 - pa_score
+
+        # Systemic Burnout Syndrome Index (geometric formula, normalized for 0-4 scale)
+        # SBSI = sqrt((EE/36)^2 + (DP/20)^2 + ((32-PA)/32)^2) / sqrt(3)
         sbsi = (
-            ((ee_score / 54) ** 2 + (dp_score / 30) ** 2 + (reduction_score / 48) ** 2) / 3
+            ((ee_score / 36) ** 2 + (dp_score / 20) ** 2 + (reduction_score / 32) ** 2) / 3
         ) ** 0.5
 
         db_mbi = MBIResult(
