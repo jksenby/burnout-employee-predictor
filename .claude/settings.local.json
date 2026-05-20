@@ -3,7 +3,9 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\" -Recurse -Force)",
       "Bash(Select-Object -First 50)",
-      "Bash(Format-Table FullName)"
+      "Bash(Format-Table FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\" -Force)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\user\\\\Desktop\\\\my-projects\\\\burnout-employee\\\\frontend\\\\src\" -Recurse | Where-Object { $_.Extension -in @\\('.js', '.jsx', '.tsx', '.ts'\\) })"
     ]
   }
 }

@@ -103,10 +103,11 @@ const resources = {
         "low_risk": "Low Risk",
         "moderate_risk": "Moderate Risk",
         "high_risk": "High Risk",
-        "at": "at"
+        "at": "at",
+        "report": "Report"
       },
       "history_table": {
-        "date_time": "📅 Date & Time",
+        "date_time": "Date & Time",
         "week": "Week",
         "fatigue_stress": "Fatigue / Stress",
         "risk_score": "Risk Score",
@@ -277,7 +278,8 @@ const resources = {
         "history": "История",
         "mbi": "MBI",
         "profile": "Профиль",
-        "logout": "Выйти"
+        "logout": "Выйти",
+        "report": "Отчет"
       },
       "auth": {
         "welcome_login": "С возвращением — войдите, чтобы продолжить",
@@ -373,7 +375,7 @@ const resources = {
         "at": "в"
       },
       "history_table": {
-        "date_time": "📅 Дата и время",
+        "date_time": "Дата и время",
         "week": "Неделя",
         "fatigue_stress": "Усталость / Стресс",
         "risk_score": "Индекс риска",
@@ -544,7 +546,8 @@ const resources = {
         "history": "Тарих",
         "mbi": "MBI",
         "profile": "Профиль",
-        "logout": "Шығу"
+        "logout": "Шығу",
+        "report": "Есеп"
       },
       "auth": {
         "welcome_login": "Қош келдіңіз — жалғастыру үшін жүйеге кіріңіз",
@@ -632,7 +635,7 @@ const resources = {
         "at": "уақытында"
       },
       "history_table": {
-        "date_time": "📅 Күні мен уақыты",
+        "date_time": "Күні мен уақыты",
         "week": "Апта",
         "fatigue_stress": "Шаршау / Стресс",
         "risk_score": "Қауіп индексі",
