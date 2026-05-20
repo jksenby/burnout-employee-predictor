@@ -65,6 +65,7 @@ class SpeechAnalysisResponse(BaseModel):
     fatigue_level: Optional[int] = None
     stress_events: Optional[bool] = None
     week_number: Optional[int] = None
+    analysis_type: Optional[str] = None
     filename: str
     file_size_bytes: int
     transcript: str

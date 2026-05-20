@@ -64,7 +64,7 @@ const HistoryPage = () => {
           gap: "40px",
         }}
       >
-        {/* Speech Records */}
+        {/* Speech Records — Interview */}
         <section>
           <h2
             style={{
@@ -73,11 +73,34 @@ const HistoryPage = () => {
               paddingBottom: "10px",
             }}
           >
-            <i className="fa-solid fa-microphone"></i> {t("history.speech_analyses")}
+            <i className="fa-solid fa-clipboard-question"></i> {t("history.interview_analyses")}
           </h2>
           <HistoryTable
-            data={history.speech_analyses}
+            data={history.speech_analyses.filter(
+              (r) => !r.analysis_type || r.analysis_type === "interview" || r.analysis_type === "upload"
+            )}
             onRowClick={(rec) => navigate(`/history/${rec.id}`)}
+            emptyKey="history_table.no_interview_data"
+          />
+        </section>
+
+        {/* Speech Records — Reading */}
+        <section>
+          <h2
+            style={{
+              marginBottom: "20px",
+              borderBottom: "1px solid #333",
+              paddingBottom: "10px",
+            }}
+          >
+            <i className="fa-solid fa-book-open-reader"></i> {t("history.reading_analyses")}
+          </h2>
+          <HistoryTable
+            data={history.speech_analyses.filter(
+              (r) => r.analysis_type === "reading"
+            )}
+            onRowClick={(rec) => navigate(`/history/${rec.id}`)}
+            emptyKey="history_table.no_reading_data"
           />
         </section>
 

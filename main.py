@@ -61,6 +61,7 @@ async def predict_burnout(
     fatigue_level: int | None = Form(None),
     stress_events: bool | None = Form(None),
     week_number: int | None = Form(None),
+    analysis_type: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_user)
 ):
@@ -142,7 +143,8 @@ async def predict_burnout(
                 acoustic_features=result["acoustic_features"],
                 fatigue_level=fatigue_level,
                 stress_events=stress_events,
-                week_number=week_number
+                week_number=week_number,
+                analysis_type=analysis_type
             )
             db.add(db_analysis)
             db.commit()

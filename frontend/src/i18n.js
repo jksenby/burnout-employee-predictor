@@ -63,6 +63,7 @@ const resources = {
         "days_left": "{{count}} days left",
         "last_completed": "Last completed",
         "next_due": "Next due",
+        "completed": "Completed",
         "take_assessment": "Take Assessment",
         "view_mbi": "View MBI",
         "start_analysis": "Start Analysis",
@@ -84,6 +85,8 @@ const resources = {
         "title": "My History",
         "subtitle": "Review your past speech analyses and questionnaire records",
         "speech_analyses": "Speech Analyses",
+        "interview_analyses": "Interview Analyses",
+        "reading_analyses": "Text Reading Analyses",
         "mbi_questionnaires": "MBI Questionnaires",
         "no_mbi": "No MBI questionnaires completed yet.",
         "burnout_index": "Burnout Index",
@@ -105,6 +108,8 @@ const resources = {
         "emotion": "Emotion",
         "transcript": "Transcript",
         "no_data": "No speech analyses recorded yet.",
+        "no_interview_data": "No interview analyses recorded yet.",
+        "no_reading_data": "No text reading analyses recorded yet.",
         "fatigue": "Fatigue",
         "stressed": "Stressed"
       },
@@ -118,7 +123,8 @@ const resources = {
         "viewing_history": "Viewing historical record from",
         "tabs": {
           "upload": "Upload File",
-          "record": "Record Audio"
+          "interview": "Interview",
+          "reading": "Read Text"
         },
         "self_report": {
           "title": "Self-assessment before recording",
@@ -133,6 +139,11 @@ const resources = {
           "core_questions": "Core Questions",
           "week_questions": "This Week's Questions",
           "questions_label": "Questions"
+        },
+        "reading": {
+          "title": "Read Text Aloud",
+          "hint": "Read the passage below clearly at a natural pace (recommended 30–60 sec).",
+          "passage": "We live in a rapidly changing world where work takes more and more time and energy. Every day we face new challenges and strive for high results. Sometimes fatigue accumulates unnoticed, and we don't immediately realize that our strength is running out. It is important to be able to recognize the signs of emotional burnout and take care of your health in time. Regular rest, support from loved ones, and honest self-reflection help maintain inner balance and productivity."
         },
         "recorder": {
           "click_to_start": "Click to start recording",
@@ -318,6 +329,7 @@ const resources = {
         "days_left": "Осталось дней: {{count}}",
         "last_completed": "Последнее прохождение",
         "next_due": "Следующее обследование",
+        "completed": "Завершено",
         "take_assessment": "Пройти тест",
         "view_mbi": "Посмотреть MBI",
         "start_analysis": "Начать анализ",
@@ -339,6 +351,8 @@ const resources = {
         "title": "Моя история",
         "subtitle": "Просмотрите ваши прошлые анализы речи и записи анкет",
         "speech_analyses": "Анализы речи",
+        "interview_analyses": "Анализы интервью",
+        "reading_analyses": "Анализы чтения текста",
         "mbi_questionnaires": "Опросники MBI",
         "no_mbi": "Опросники MBI еще не пройдены.",
         "burnout_index": "Индекс выгорания",
@@ -360,6 +374,8 @@ const resources = {
         "emotion": "Эмоция",
         "transcript": "Транскрипт",
         "no_data": "Записи анализа речи еще не созданы.",
+        "no_interview_data": "Записи анализа интервью еще не созданы.",
+        "no_reading_data": "Записи анализа чтения текста еще не созданы.",
         "fatigue": "Усталость",
         "stressed": "Стресс"
       },
@@ -373,7 +389,8 @@ const resources = {
         "viewing_history": "Просмотр исторической записи от",
         "tabs": {
           "upload": "Загрузить файл",
-          "record": "Записать аудио"
+          "interview": "Интервью",
+          "reading": "Чтение текста"
         },
         "self_report": {
           "title": "Самооценка перед записью",
@@ -388,6 +405,11 @@ const resources = {
           "core_questions": "Базовые вопросы",
           "week_questions": "Вопросы этой недели",
           "questions_label": "Вопросы"
+        },
+        "reading": {
+          "title": "Чтение текста вслух",
+          "hint": "Прочитайте отрывок ниже чётко в своём темпе (рекомендуется 30–60 сек).",
+          "passage": "Мы живём в быстро меняющемся мире, где работа занимает всё больше времени и сил. Каждый день мы сталкиваемся с новыми задачами и стремимся к высоким результатам. Порой усталость накапливается незаметно, и мы не сразу замечаем, что силы на исходе. Важно уметь распознавать признаки эмоционального выгорания и своевременно заботиться о своём здоровье. Регулярный отдых, поддержка близких и честный разговор с собой помогают сохранить внутренний баланс и работоспособность."
         },
         "recorder": {
           "click_to_start": "Нажмите, чтобы начать запись",
@@ -573,6 +595,7 @@ const resources = {
         "days_left": "{{count}} күн қалды",
         "last_completed": "Соңғы орындалған",
         "next_due": "Келесі мерзімі",
+        "completed": "Аяқталған",
         "take_assessment": "Тест тапсыру",
         "view_mbi": "MBI көру",
         "start_analysis": "Талдауды бастау",
@@ -586,6 +609,8 @@ const resources = {
         "title": "Менің тарихым",
         "subtitle": "Сөйлеуді талдау және сауалнама жазбаларыңызды қарап шығыңыз",
         "speech_analyses": "Сөйлеуді талдау",
+        "interview_analyses": "Сұхбат талдаулары",
+        "reading_analyses": "Мәтін оқу талдаулары",
         "mbi_questionnaires": "MBI сауалнамалары",
         "no_mbi": "MBI сауалнамалары әлі толтырылмаған.",
         "burnout_index": "Күйіп кету индексі",
@@ -607,6 +632,8 @@ const resources = {
         "emotion": "Эмоция",
         "transcript": "Транскрипт",
         "no_data": "Сөйлеуді талдау жазбалары әлі жасалмаған.",
+        "no_interview_data": "Сұхбат талдауының жазбалары әлі жасалмаған.",
+        "no_reading_data": "Мәтін оқу талдауының жазбалары әлі жасалмаған.",
         "fatigue": "Шаршау",
         "stressed": "Стресс"
       },
@@ -620,7 +647,8 @@ const resources = {
         "viewing_history": "Келесіден тарихи жазбаны көру:",
         "tabs": {
           "upload": "Файлды жүктеу",
-          "record": "Аудио жазу"
+          "interview": "Сұхбат",
+          "reading": "Мәтін оқу"
         },
         "self_report": {
           "title": "Жазу алдындағы өзін-өзі бағалау",
@@ -635,6 +663,11 @@ const resources = {
           "core_questions": "Негізгі сұрақтар",
           "week_questions": "Осы аптаның сұрақтары",
           "questions_label": "Сұрақтар"
+        },
+        "reading": {
+          "title": "Мәтінді дауыстап оқу",
+          "hint": "Төмендегі үзіндіні анық және өз қарқынымен дауыстап оқыңыз (30–60 сек ұсынылады).",
+          "passage": "Біз жылдам өзгеретін әлемде өмір сүреміз, мұнда жұмыс барған сайын көп уақыт пен күш жұмсайды. Күн сайын біз жаңа міндеттермен бетпе-бет келеміз және жоғары нәтижелерге ұмтыламыз. Кейде шаршау байқалмай жиналады, ал біз күш-қуатымыздың таусылғанын бірден байқамаймыз. Эмоционалды күйіп кетудің белгілерін уақытында тану және денсаулығыңызды сақтау маңызды. Тұрақты демалу, жақындарының қолдауы және өзімен-өзі шынайы сөйлесу ішкі тепе-теңдік пен жұмысқа қабілеттілікті сақтауға көмектеседі."
         },
         "recorder": {
           "click_to_start": "Жазуды бастау үшін басыңыз",

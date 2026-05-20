@@ -14,7 +14,8 @@ const SpeechAnalysisPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState("upload");
+  const [activeTab, setActiveTab] = useState("interview");
+  const [uploadAnalysisType, setUploadAnalysisType] = useState("interview");
   const [file, setFile] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -88,6 +89,7 @@ const SpeechAnalysisPage = () => {
       formData.append("file", file);
       formData.append("fatigue_level", fatigueLevel);
       formData.append("stress_events", stressEvents);
+      formData.append("analysis_type", activeTab === "upload" ? uploadAnalysisType : activeTab);
       if (questions) {
         formData.append("week_number", questions.week_number);
       }
@@ -156,16 +158,22 @@ const SpeechAnalysisPage = () => {
         <>
           <div className="input-tabs">
             <button
+              className={`input-tab ${activeTab === "interview" ? "active" : ""}`}
+              onClick={() => handleTabChange("interview")}
+            >
+              {t("speech_analysis.tabs.interview")}
+            </button>
+            <button
+              className={`input-tab ${activeTab === "reading" ? "active" : ""}`}
+              onClick={() => handleTabChange("reading")}
+            >
+              {t("speech_analysis.tabs.reading")}
+            </button>
+            <button
               className={`input-tab ${activeTab === "upload" ? "active" : ""}`}
               onClick={() => handleTabChange("upload")}
             >
               {t("speech_analysis.tabs.upload")}
-            </button>
-            <button
-              className={`input-tab ${activeTab === "record" ? "active" : ""}`}
-              onClick={() => handleTabChange("record")}
-            >
-              {t("speech_analysis.tabs.record")}
             </button>
           </div>
 
@@ -209,9 +217,12 @@ const SpeechAnalysisPage = () => {
               loading={loading}
               onFileSelect={handleFileSelect}
               onAnalyze={handleAnalyze}
+              uploadAnalysisType={uploadAnalysisType}
+              onUploadTypeChange={setUploadAnalysisType}
             />
           ) : (
             <AudioRecorder
+              mode={activeTab}
               file={file}
               audioUrl={audioUrl}
               loading={loading}

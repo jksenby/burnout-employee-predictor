@@ -51,7 +51,7 @@ async function convertToWav(blob) {
 
 // Removed READING_TEXT
 
-const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, questions }) => {
+const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, questions, mode = "interview" }) => {
   const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -158,52 +158,74 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
 
   return (
     <div className="upload-card">
-      <div className="reading-passage">
-        <h3><i className="fa-solid fa-clipboard-question"></i> {t("speech_analysis.interview.title", { week: questions?.week_number || 1 })}</h3>
-        <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.interview.hint")}</p>
-        
-        <div className="interview-questions" style={{ textAlign: "left", fontSize: "15px" }}>
-          {allQuestions.length > 0 && (
-            <div className="question-carousel" style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "10px", padding: "20px", marginTop: "10px", overflow: "hidden" }}>
-              
-              <div 
-                onClick={prevQuestion}
-                style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex > 0 ? "pointer" : "default", zIndex: 1 }}
-              />
-              <div 
-                onClick={nextQuestion}
-                style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex < allQuestions.length - 1 ? "pointer" : "default", zIndex: 1 }}
-              />
+      {mode === "interview" ? (
+        <div className="reading-passage">
+          <h3><i className="fa-solid fa-clipboard-question"></i> {t("speech_analysis.interview.title", { week: questions?.week_number || 1 })}</h3>
+          <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.interview.hint")}</p>
 
-              <button 
-                onClick={prevQuestion} 
-                disabled={currentQuestionIndex === 0}
-                style={{ position: "absolute", left: "10px", background: "none", border: "none", color: currentQuestionIndex === 0 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === 0 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
-              >
-                <i className="fa-solid fa-chevron-left"></i>
-              </button>
-              
-              <div style={{ textAlign: "center", maxWidth: "80%", zIndex: 0 }}>
-                <div style={{ color: allQuestions[currentQuestionIndex].type === 'core' ? "#00d2ff" : "#ff00d2", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", fontWeight: "bold" }}>
-                  {t("speech_analysis.interview.questions_label")}
-                  &nbsp;({currentQuestionIndex + 1} / {allQuestions.length})
+          <div className="interview-questions" style={{ textAlign: "left", fontSize: "15px" }}>
+            {allQuestions.length > 0 && (
+              <div className="question-carousel" style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px", background: "rgba(255, 255, 255, 0.05)", borderRadius: "10px", padding: "20px", marginTop: "10px", overflow: "hidden" }}>
+
+                <div
+                  onClick={prevQuestion}
+                  style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex > 0 ? "pointer" : "default", zIndex: 1 }}
+                />
+                <div
+                  onClick={nextQuestion}
+                  style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "50%", cursor: currentQuestionIndex < allQuestions.length - 1 ? "pointer" : "default", zIndex: 1 }}
+                />
+
+                <button
+                  onClick={prevQuestion}
+                  disabled={currentQuestionIndex === 0}
+                  style={{ position: "absolute", left: "10px", background: "none", border: "none", color: currentQuestionIndex === 0 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === 0 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+                >
+                  <i className="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <div style={{ textAlign: "center", maxWidth: "80%", zIndex: 0 }}>
+                  <div style={{ color: allQuestions[currentQuestionIndex].type === 'core' ? "#00d2ff" : "#ff00d2", fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "10px", fontWeight: "bold" }}>
+                    {t("speech_analysis.interview.questions_label")}
+                    &nbsp;({currentQuestionIndex + 1} / {allQuestions.length})
+                  </div>
+                  <div style={{ fontSize: "18px", lineHeight: "1.4" }}>
+                    {t(allQuestions[currentQuestionIndex].text)}
+                  </div>
                 </div>
-                <div style={{ fontSize: "18px", lineHeight: "1.4" }}>
-                  {t(allQuestions[currentQuestionIndex].text)}
-                </div>
+
+                <button
+                  onClick={nextQuestion}
+                  disabled={currentQuestionIndex === allQuestions.length - 1}
+                  style={{ position: "absolute", right: "10px", background: "none", border: "none", color: currentQuestionIndex === allQuestions.length - 1 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === allQuestions.length - 1 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
+                >
+                  <i className="fa-solid fa-chevron-right"></i>
+                </button>
               </div>
-
-              <button 
-                onClick={nextQuestion} 
-                disabled={currentQuestionIndex === allQuestions.length - 1}
-                style={{ position: "absolute", right: "10px", background: "none", border: "none", color: currentQuestionIndex === allQuestions.length - 1 ? "rgba(255,255,255,0.2)" : "#00d2ff", fontSize: "24px", cursor: currentQuestionIndex === allQuestions.length - 1 ? "default" : "pointer", padding: "10px", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2 }}
-              >
-                <i className="fa-solid fa-chevron-right"></i>
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="reading-passage">
+          <h3><i className="fa-solid fa-book-open-reader"></i> {t("speech_analysis.reading.title")}</h3>
+          <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.reading.hint")}</p>
+          <div style={{
+            background: "rgba(255, 255, 255, 0.05)",
+            borderRadius: "10px",
+            padding: "20px 24px",
+            marginTop: "10px",
+            fontSize: "17px",
+            lineHeight: "1.8",
+            color: "#111",
+            borderLeft: "4px solid #00d2ff",
+            letterSpacing: "0.01em"
+          }}>
+            {t("speech_analysis.reading.passage")}
+          </div>
+        </div>
+      )}
+
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", margin: "20px 0" }} />
 
       <div className="audio-recorder">
         {!isRecording && !file && (

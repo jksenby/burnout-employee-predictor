@@ -43,7 +43,9 @@ const DashboardPage = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return t("dashboard.never");
-    return new Date(dateStr).toLocaleDateString(undefined, {
+    const date = new Date(dateStr);
+    if(date.toString() === "Invalid Date") return t("dashboard.completed");
+    return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",

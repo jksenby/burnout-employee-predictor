@@ -2,10 +2,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { emotionIcon } from '../helpers/formatters';
 
-const HistoryTable = ({ data, onRowClick }) => {
+const HistoryTable = ({ data, onRowClick, emptyKey = "history_table.no_data" }) => {
   const { t } = useTranslation();
   if (data.length === 0) {
-    return <p style={{ color: "#888" }}>{t("history_table.no_data")}</p>;
+    return <p style={{ color: "#888" }}>{t(emptyKey)}</p>;
   }
 
   return (

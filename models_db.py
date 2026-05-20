@@ -29,6 +29,7 @@ class SpeechAnalysis(Base):
     fatigue_level = Column(Integer, nullable=True)
     stress_events = Column(Boolean, nullable=True)
     week_number = Column(Integer, nullable=True)
+    analysis_type = Column(String, nullable=True)
     filename = Column(String)
     file_size_bytes = Column(Integer)
     transcript = Column(String)

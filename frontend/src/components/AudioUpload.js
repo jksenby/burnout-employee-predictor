@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
+const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze, uploadAnalysisType, onUploadTypeChange }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = React.useState(false);
@@ -35,6 +35,47 @@ const AudioUpload = ({ file, audioUrl, loading, onFileSelect, onAnalyze }) => {
 
   return (
     <div className="upload-card">
+      <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+        <button
+          type="button"
+          onClick={() => onUploadTypeChange("interview")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: uploadAnalysisType === "interview" ? "2px solid #00d2ff" : "1px solid rgba(255,255,255,0.15)",
+            background: uploadAnalysisType === "interview" ? "rgba(0,210,255,0.12)" : "transparent",
+            color: uploadAnalysisType === "interview" ? "#00d2ff" : "#aaa",
+            fontWeight: uploadAnalysisType === "interview" ? "600" : "400",
+            cursor: "pointer",
+            fontSize: "13px",
+            transition: "all 0.15s",
+          }}
+        >
+          <i className="fa-solid fa-clipboard-question" style={{ marginRight: "6px" }}></i>
+          {t("speech_analysis.tabs.interview")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onUploadTypeChange("reading")}
+          style={{
+            flex: 1,
+            padding: "8px 12px",
+            borderRadius: "8px",
+            border: uploadAnalysisType === "reading" ? "2px solid #00d2ff" : "1px solid rgba(255,255,255,0.15)",
+            background: uploadAnalysisType === "reading" ? "rgba(0,210,255,0.12)" : "transparent",
+            color: uploadAnalysisType === "reading" ? "#00d2ff" : "#aaa",
+            fontWeight: uploadAnalysisType === "reading" ? "600" : "400",
+            cursor: "pointer",
+            fontSize: "13px",
+            transition: "all 0.15s",
+          }}
+        >
+          <i className="fa-solid fa-book-open-reader" style={{ marginRight: "6px" }}></i>
+          {t("speech_analysis.tabs.reading")}
+        </button>
+      </div>
+
       <div
         className={`upload-area ${isDragOver ? 'dragover' : ''}`}
         onClick={onUploadClick}
