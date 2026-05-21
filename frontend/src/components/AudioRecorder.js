@@ -49,13 +49,21 @@ async function convertToWav(blob) {
   return audioBufferToWav(audioBuffer);
 }
 
-// Removed READING_TEXT
-
 const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, questions, mode = "interview" }) => {
   const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const passages = t("speech_analysis.reading.passages", { returnObjects: true });
+  const [passageIndex, setPassageIndex] = useState(() => Math.floor(Math.random() * passages.length));
+
+  const shufflePassage = () => {
+    setPassageIndex((prev) => {
+      let next;
+      do { next = Math.floor(Math.random() * passages.length); } while (passages.length > 1 && next === prev);
+      return next;
+    });
+  };
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -207,7 +215,16 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
         </div>
       ) : (
         <div className="reading-passage">
-          <h3><i className="fa-solid fa-book-open-reader"></i> {t("speech_analysis.reading.title")}</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "15px" }}>
+            <h3 style={{ margin: 0 }}><i className="fa-solid fa-book-open-reader"></i> {t("speech_analysis.reading.title")}</h3>
+            <button
+              onClick={shufflePassage}
+              title="Get another passage"
+              style={{ background: "none", border: "1px solid rgba(0,210,255,0.4)", borderRadius: "6px", color: "#00d2ff", padding: "5px 10px", cursor: "pointer", fontSize: "13px", display: "flex", alignItems: "center", gap: "5px" }}
+            >
+              <i className="fa-solid fa-shuffle"></i> {passageIndex + 1} / {passages.length}
+            </button>
+          </div>
           <p className="hint" style={{marginBottom: "15px"}}>{t("speech_analysis.reading.hint")}</p>
           <div style={{
             background: "rgba(255, 255, 255, 0.05)",
@@ -220,7 +237,7 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
             borderLeft: "4px solid #00d2ff",
             letterSpacing: "0.01em"
           }}>
-            {t("speech_analysis.reading.passage")}
+            {passages[passageIndex]}
           </div>
         </div>
       )}

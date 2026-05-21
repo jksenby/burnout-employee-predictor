@@ -151,7 +151,12 @@ const resources = {
         "reading": {
           "title": "Read Text Aloud",
           "hint": "Read the passage below clearly at a natural pace (recommended 30–60 sec).",
-          "passage": "We live in a rapidly changing world where work takes more and more time and energy. Every day we face new challenges and strive for high results. Sometimes fatigue accumulates unnoticed, and we don't immediately realize that our strength is running out. It is important to be able to recognize the signs of emotional burnout and take care of your health in time. Regular rest, support from loved ones, and honest self-reflection help maintain inner balance and productivity."
+          "passages": [
+            "We live in a rapidly changing world where work takes more and more time and energy. Every day we face new challenges and strive for high results. Sometimes fatigue accumulates unnoticed, and we don't immediately realize that our strength is running out. It is important to be able to recognize the signs of emotional burnout and take care of your health in time. Regular rest, support from loved ones, and honest self-reflection help maintain inner balance and productivity.",
+            "A healthy work environment is built on trust and mutual respect. When colleagues support each other, it becomes easier to handle difficult tasks and stay motivated. Open communication and the willingness to ask for help are signs of maturity, not weakness. The ability to delegate responsibilities and distribute workload helps the entire team work sustainably. Together, people achieve more while preserving their own resources.",
+            "Mindfulness begins with simple things: how we breathe, how we move, what we feel right now. Many of us live in a constant rush, not noticing the signals our bodies send us. Stopping for a few minutes to listen to yourself is not a luxury but a necessity. These moments of awareness help reduce anxiety and restore clarity of thought. Taking care of yourself today is an investment in tomorrow.",
+            "Setting personal boundaries means respecting your own time and energy. A person who always says yes risks exhausting themselves before others even notice. The ability to say no without guilt is an important skill that requires practice. Quality rest, hobbies, and time away from work are essential for long-term effectiveness. Recovery is not inaction — it is an active part of a productive life."
+          ]
         },
         "recorder": {
           "click_to_start": "Click to start recording",
@@ -419,7 +424,12 @@ const resources = {
         "reading": {
           "title": "Чтение текста вслух",
           "hint": "Прочитайте отрывок ниже чётко в своём темпе (рекомендуется 30–60 сек).",
-          "passage": "Мы живём в быстро меняющемся мире, где работа занимает всё больше времени и сил. Каждый день мы сталкиваемся с новыми задачами и стремимся к высоким результатам. Порой усталость накапливается незаметно, и мы не сразу замечаем, что силы на исходе. Важно уметь распознавать признаки эмоционального выгорания и своевременно заботиться о своём здоровье. Регулярный отдых, поддержка близких и честный разговор с собой помогают сохранить внутренний баланс и работоспособность."
+          "passages": [
+            "Мы живём в быстро меняющемся мире, где работа занимает всё больше времени и сил. Каждый день мы сталкиваемся с новыми задачами и стремимся к высоким результатам. Порой усталость накапливается незаметно, и мы не сразу замечаем, что силы на исходе. Важно уметь распознавать признаки эмоционального выгорания и своевременно заботиться о своём здоровье. Регулярный отдых, поддержка близких и честный разговор с собой помогают сохранить внутренний баланс и работоспособность.",
+            "Здоровая рабочая обстановка строится на доверии и взаимоуважении. Когда коллеги поддерживают друг друга, легче справляться с трудными задачами и сохранять мотивацию. Открытое общение и готовность попросить о помощи — признаки зрелости, а не слабости. Умение делегировать обязанности и распределять нагрузку помогает всей команде работать устойчиво. Вместе люди достигают большего, сохраняя при этом собственные ресурсы.",
+            "Внимательность к себе начинается с простых вещей: как мы дышим, как двигаемся, что чувствуем прямо сейчас. Многие из нас живут в режиме постоянной спешки, не замечая сигналов собственного тела. Остановиться на несколько минут и прислушаться к себе — это не роскошь, а необходимость. Такие моменты осознанности помогают снизить уровень тревоги и восстановить ясность мышления. Забота о себе сегодня — это инвестиция в завтрашний день.",
+            "Устанавливать личные границы — это значит уважать своё время и энергию. Человек, который всегда говорит «да», рискует истощить себя раньше, чем заметит это окружающие. Умение отказать без чувства вины — важный навык, который требует практики. Полноценный отдых, хобби и время вне работы необходимы для долгосрочной эффективности. Восстановление — это не бездействие, а активная часть продуктивной жизни."
+          ]
         },
         "recorder": {
           "click_to_start": "Нажмите, чтобы начать запись",
@@ -679,7 +689,12 @@ const resources = {
         "reading": {
           "title": "Мәтінді дауыстап оқу",
           "hint": "Төмендегі үзіндіні анық және өз қарқынымен дауыстап оқыңыз (30–60 сек ұсынылады).",
-          "passage": "Біз жылдам өзгеретін әлемде өмір сүреміз, мұнда жұмыс барған сайын көп уақыт пен күш жұмсайды. Күн сайын біз жаңа міндеттермен бетпе-бет келеміз және жоғары нәтижелерге ұмтыламыз. Кейде шаршау байқалмай жиналады, ал біз күш-қуатымыздың таусылғанын бірден байқамаймыз. Эмоционалды күйіп кетудің белгілерін уақытында тану және денсаулығыңызды сақтау маңызды. Тұрақты демалу, жақындарының қолдауы және өзімен-өзі шынайы сөйлесу ішкі тепе-теңдік пен жұмысқа қабілеттілікті сақтауға көмектеседі."
+          "passages": [
+            "Біз жылдам өзгеретін әлемде өмір сүреміз, мұнда жұмыс барған сайын көп уақыт пен күш жұмсайды. Күн сайын біз жаңа міндеттермен бетпе-бет келеміз және жоғары нәтижелерге ұмтыламыз. Кейде шаршау байқалмай жиналады, ал біз күш-қуатымыздың таусылғанын бірден байқамаймыз. Эмоционалды күйіп кетудің белгілерін уақытында тану және денсаулығыңызды сақтау маңызды. Тұрақты демалу, жақындарының қолдауы және өзімен-өзі шынайы сөйлесу ішкі тепе-теңдік пен жұмысқа қабілеттілікті сақтауға көмектеседі.",
+            "Салауатты жұмыс ортасы сенім мен өзара сыйластыққа негізделген. Әріптестер бір-бірін қолдаған кезде қиын міндеттермен күресу және ынтаны сақтау оңайырақ болады. Ашық қарым-қатынас және көмек сұрауға дайындық — әлсіздіктің емес, жетілгендіктің белгісі. Міндеттерді бөлу және жұмыс жүктемесін реттеу мүмкіндігі бүкіл команданың тұрақты жұмыс істеуіне көмектеседі. Бірге адамдар өз ресурстарын сақтай отырып, көбірек нәтижеге жетеді.",
+            "Өзіне зейін аудару қарапайым нәрселерден басталады: біз қалай дем аламыз, қалай қозғаламыз, қазір не сезінеміз. Біздің көпшілігіміз тұрақты асығыс режимінде өмір сүреміз, денемізден келетін сигналдарды байқамаймыз. Бірнеше минутқа тоқтап, өзіңізге тыңдау — бұл сән емес, қажеттілік. Осындай сергектік сәттері мазасыздық деңгейін төмендетіп, ой айқындығын қалпына келтіруге көмектеседі. Бүгін өзіңе қамқорлық жасау — ертеңге деген инвестиция.",
+            "Жеке шекараларды белгілеу өз уақытыңыз бен энергияңызды құрметтеу дегенді білдіреді. Әрқашан «иә» дейтін адам айналасы байқамас бұрын өзін таусып алу қаупін туғызады. Кінәсіз бас тарта білу — тәжірибені қажет ететін маңызды дағды. Толыққанды демалу, хобби және жұмыстан тыс уақыт ұзақ мерзімді тиімділік үшін қажет. Қалпына келу — бәсеңдік емес, өнімді өмірдің белсенді бөлігі."
+          ]
         },
         "recorder": {
           "click_to_start": "Жазуды бастау үшін басыңыз",

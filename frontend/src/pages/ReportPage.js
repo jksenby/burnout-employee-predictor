@@ -185,6 +185,21 @@ const ReportPage = () => {
     const riskCounts = { 'Low Risk': 0, 'Moderate Risk': 0, 'High Risk': 0 };
     speeches.forEach(s => { if (s.label) riskCounts[s.label] = (riskCounts[s.label] || 0) + 1; });
 
+    const withFatigue = speeches.filter(s => s.fatigue_level !== null && s.fatigue_level !== undefined);
+    const avgFatigueLevel = withFatigue.length > 0
+      ? withFatigue.reduce((s, a) => s + a.fatigue_level, 0) / withFatigue.length : null;
+
+    const stressEventsCount = speeches.filter(s => s.stress_events === true).length;
+
+    const streamKeys = new Set();
+    speeches.forEach(s => s.stream_contributions && Object.keys(s.stream_contributions).forEach(k => streamKeys.add(k)));
+    const avgStreamContributions = {};
+    streamKeys.forEach(key => {
+      const vals = speeches.filter(s => s.stream_contributions?.[key] !== undefined);
+      if (vals.length > 0)
+        avgStreamContributions[key] = vals.reduce((s, a) => s + a.stream_contributions[key], 0) / vals.length;
+    });
+
     const spPct = speechDelta !== null ? Math.abs(speechDelta * 100).toFixed(1) : null;
     const mbPct = mbiDelta !== null ? Math.abs(mbiDelta * 100).toFixed(1) : null;
 
@@ -222,6 +237,7 @@ const ReportPage = () => {
       avgSentiment, avgAbsolutist, avgNegRatio,
       dominantEmotion, dominantEmotionLabel,
       riskCounts, narrative,
+      avgFatigueLevel, stressEventsCount, avgStreamContributions,
     };
   }, [historyData]);
 
@@ -458,6 +474,21 @@ const ReportPage = () => {
                     color={trendInfo[verdictData.speechTrend].color}
                   />
                 )}
+                {verdictData.avgFatigueLevel !== null && (
+                  <MetricRow
+                    label="Ср. уровень усталости"
+                    value={verdictData.avgFatigueLevel.toFixed(1)}
+                    note={`из ${Math.max(...(historyData.speech_analyses || []).filter(s => s.fatigue_level != null).map(s => s.fatigue_level))}`}
+                    color={verdictData.avgFatigueLevel >= 4 ? '#dc2626' : verdictData.avgFatigueLevel >= 3 ? '#d97706' : '#16a34a'}
+                  />
+                )}
+                {verdictData.stressEventsCount > 0 && (
+                  <MetricRow
+                    label="Стрессовых событий"
+                    value={`${verdictData.stressEventsCount} из ${summaryStats.totalSpeech}`}
+                    color={verdictData.stressEventsCount / summaryStats.totalSpeech > 0.5 ? '#dc2626' : '#d97706'}
+                  />
+                )}
                 <Divider />
                 <MetricRow label="Низкий риск" value={`${verdictData.riskCounts['Low Risk']} сес.`} color="#16a34a" />
                 <MetricRow label="Умеренный риск" value={`${verdictData.riskCounts['Moderate Risk']} сес.`} color="#d97706" />
@@ -546,6 +577,38 @@ const ReportPage = () => {
                 {verdictData.dominantEmotionLabel && (
                   <MetricRow label="Преобл. эмоция" value={verdictData.dominantEmotionLabel} />
                 )}
+              </MetricBlock>
+            )}
+
+            {/* — Вклад источников — */}
+            {Object.keys(verdictData.avgStreamContributions).length > 0 && (
+              <MetricBlock title="Вклад источников в оценку" accent="#e84393">
+                {Object.entries(verdictData.avgStreamContributions)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([key, val]) => (
+                    <div key={key}>
+                      <MetricRow
+                        label={key.charAt(0).toUpperCase() + key.slice(1)}
+                        value={`${val.toFixed(1)}%`}
+                        color={val > 60 ? '#dc2626' : val > 35 ? '#d97706' : '#6b7280'}
+                      />
+                      <div style={{
+                        height: 4,
+                        background: '#f3f4f6',
+                        borderRadius: 2,
+                        marginTop: 3,
+                        marginBottom: 5,
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${val.toFixed(1)}%`,
+                          background: val > 60 ? '#dc2626' : val > 35 ? '#d97706' : '#8884d8',
+                          borderRadius: 2,
+                        }} />
+                      </div>
+                    </div>
+                  ))}
               </MetricBlock>
             )}
 
