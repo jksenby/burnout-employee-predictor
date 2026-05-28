@@ -168,7 +168,7 @@ class BurnoutMultimodalClassifier:
             ])),
             "faster_whisper_linguistic": float(np.sum(importances[
                 n_hubert + n_emotion + n_acoustic:
-            ])),
+            ])) if text_features else 0.0,
         }
 
         total_imp = sum(stream_importance.values()) + 1e-10
@@ -261,12 +261,20 @@ class BurnoutMultimodalClassifier:
             label = self.labels[2]
             probs = [0.05, 0.25, 0.70]
 
-        stream_contribution = {
-            "hubert_acoustic": 25.0,
-            "emotion": 20.0,
-            "wavlm_prosody": 40.0,
-            "faster_whisper_linguistic": 15.0,
-        }
+        if text_features:
+            stream_contribution = {
+                "hubert_acoustic": 25.0,
+                "emotion": 20.0,
+                "wavlm_prosody": 40.0,
+                "faster_whisper_linguistic": 15.0,
+            }
+        else:
+            stream_contribution = {
+                "hubert_acoustic": 29.4,
+                "emotion": 23.5,
+                "wavlm_prosody": 47.1,
+                "faster_whisper_linguistic": 0.0,
+            }
 
         result = {
             "label": label,

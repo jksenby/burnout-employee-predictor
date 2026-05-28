@@ -55,100 +55,154 @@ async def root():
     }
 
 
-@app.post("/predict")
-async def predict_burnout(
+async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transcript: bool = True) -> dict:
+    """Run the full multimodal speech analysis pipeline and return raw results.
+
+    Set include_transcript=False (reading mode) to skip Faster-Whisper and NLP text features.
+    """
+    print(f"\n{'='*50}")
+    print(f"Processing: {filename} ({len(audio_bytes)} bytes)")
+    print(f"{'='*50}")
+
+    print("\n[Stream 1] HuBERT — acoustic embedding...")
+    hubert_embedding = extract_hubert_embedding(audio_bytes)
+
+    print("[Stream 1] SpeechBrain — emotion recognition...")
+    emotion_result = extract_emotion(audio_bytes)
+
+    print("\n[Stream 2] WavLM — prosody embedding...")
+    wavlm_embedding = extract_wavlm_embedding(audio_bytes)
+
+    print("[Stream 2] Librosa — acoustic features...")
+    acoustic_features = extract_acoustic_features(audio_bytes)
+
+    if include_transcript:
+        print("\n[Stream 3] Faster-Whisper — transcription (multilingual)...")
+        transcript = transcribe_bytes(audio_bytes)
+        print("[Stream 3] NLP — linguistic features...")
+        text_feat = extract_text_features(transcript)
+    else:
+        print("\n[Stream 3] Skipped — reading mode (no transcription needed)")
+        transcript = None
+        text_feat = {}
+
+    print("\n[Fusion] Running multimodal late fusion...")
+    result = predict(
+        hubert_embedding=hubert_embedding,
+        wavlm_embedding=wavlm_embedding,
+        acoustic_features=acoustic_features,
+        emotion_result=emotion_result,
+        text_features=text_feat,
+    )
+
+    result["filename"] = filename
+    result["file_size_bytes"] = len(audio_bytes)
+    result["transcript"] = transcript
+    result["acoustic_features"] = {
+        "pitch_mean": acoustic_features.get("pitch_mean", 0),
+        "pitch_std": acoustic_features.get("pitch_std", 0),
+        "pitch_range": acoustic_features.get("pitch_range", 0),
+        "energy_mean": acoustic_features.get("energy_mean", 0),
+        "energy_std": acoustic_features.get("energy_std", 0),
+        "jitter": acoustic_features.get("jitter", 0),
+        "shimmer": acoustic_features.get("shimmer", 0),
+        "hnr": acoustic_features.get("hnr", 0),
+        "speech_rate": acoustic_features.get("speech_rate", 0),
+        "pause_ratio": acoustic_features.get("pause_ratio", 0),
+        "spectral_centroid_mean": acoustic_features.get("spectral_centroid_mean", 0),
+    }
+
+    print(f"\n{'='*50}")
+    print(f"Result: {result['label']} (score={result['score']:.3f})")
+    print(f"{'='*50}\n")
+
+    return result
+
+
+def _save_speech_analysis(db, current_user, result: dict, *, analysis_type: str,
+                           fatigue_level, stress_events, week_number=None):
+    db_analysis = SpeechAnalysis(
+        user_id=current_user.id,
+        filename=result["filename"],
+        file_size_bytes=result["file_size_bytes"],
+        transcript=result["transcript"],
+        label=result["label"],
+        score=result["score"],
+        confidence=result.get("confidence", 0.0),
+        probabilities=result.get("probabilities", {}),
+        stream_contributions=result.get("stream_contributions", {}),
+        emotions=result.get("emotions", {}),
+        dominant_emotion=result.get("dominant_emotion", "unknown"),
+        text_analysis=result.get("text_analysis", {}),
+        acoustic_features=result["acoustic_features"],
+        fatigue_level=fatigue_level,
+        stress_events=stress_events,
+        week_number=week_number,
+        analysis_type=analysis_type,
+    )
+    db.add(db_analysis)
+    db.commit()
+    print(f"[{current_user.username}] Saved {analysis_type} analysis to DB.")
+
+
+@app.post("/predict/interview")
+async def predict_interview(
     file: UploadFile,
     fatigue_level: int | None = Form(None),
     stress_events: bool | None = Form(None),
     week_number: int | None = Form(None),
-    analysis_type: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_user)
 ):
     try:
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file uploaded")
-
         audio_bytes = await file.read()
-
         if len(audio_bytes) == 0:
             raise HTTPException(status_code=400, detail="Empty file")
 
-        print(f"\n{'='*50}")
-        print(f"Processing: {file.filename} ({len(audio_bytes)} bytes)")
-        print(f"{'='*50}")
-
-        print("\n[Stream 1] HuBERT — acoustic embedding...")
-        hubert_embedding = extract_hubert_embedding(audio_bytes)
-
-        print("[Stream 1] SpeechBrain — emotion recognition...")
-        emotion_result = extract_emotion(audio_bytes)
-
-        print("\n[Stream 2] WavLM — prosody embedding...")
-        wavlm_embedding = extract_wavlm_embedding(audio_bytes)
-
-        print("[Stream 2] Librosa — acoustic features...")
-        acoustic_features = extract_acoustic_features(audio_bytes)
-
-        print("\n[Stream 3] Faster-Whisper — transcription (multilingual)...")
-        transcript = transcribe_bytes(audio_bytes)
-
-        print("[Stream 3] NLP — linguistic features...")
-        text_feat = extract_text_features(transcript)
-
-        print("\n[Fusion] Running multimodal late fusion...")
-        result = predict(
-            hubert_embedding=hubert_embedding,
-            wavlm_embedding=wavlm_embedding,
-            acoustic_features=acoustic_features,
-            emotion_result=emotion_result,
-            text_features=text_feat,
-        )
-
-        result["filename"] = file.filename
-        result["file_size_bytes"] = len(audio_bytes)
-        result["transcript"] = transcript
-        result["acoustic_features"] = {
-            "pitch_mean": acoustic_features.get("pitch_mean", 0),
-            "pitch_std": acoustic_features.get("pitch_std", 0),
-            "pitch_range": acoustic_features.get("pitch_range", 0),
-            "energy_mean": acoustic_features.get("energy_mean", 0),
-            "energy_std": acoustic_features.get("energy_std", 0),
-            "jitter": acoustic_features.get("jitter", 0),
-            "shimmer": acoustic_features.get("shimmer", 0),
-            "hnr": acoustic_features.get("hnr", 0),
-            "speech_rate": acoustic_features.get("speech_rate", 0),
-            "pause_ratio": acoustic_features.get("pause_ratio", 0),
-            "spectral_centroid_mean": acoustic_features.get("spectral_centroid_mean", 0),
-        }
-
-        print(f"\n{'='*50}")
-        print(f"Result: {result['label']} (score={result['score']:.3f})")
-        print(f"{'='*50}\n")
+        result = await _run_speech_pipeline(audio_bytes, file.filename)
 
         if current_user:
-            db_analysis = SpeechAnalysis(
-                user_id=current_user.id,
-                filename=result["filename"],
-                file_size_bytes=result["file_size_bytes"],
-                transcript=result["transcript"],
-                label=result["label"],
-                score=result["score"],
-                confidence=result.get("confidence", 0.0),
-                probabilities=result.get("probabilities", {}),
-                stream_contributions=result.get("stream_contributions", {}),
-                emotions=result.get("emotions", {}),
-                dominant_emotion=result.get("dominant_emotion", "unknown"),
-                text_analysis=result.get("text_analysis", {}),
-                acoustic_features=result["acoustic_features"],
+            _save_speech_analysis(
+                db, current_user, result,
+                analysis_type="interview",
                 fatigue_level=fatigue_level,
                 stress_events=stress_events,
                 week_number=week_number,
-                analysis_type=analysis_type
             )
-            db.add(db_analysis)
-            db.commit()
-            print(f"[{current_user.username}] Saved analysis to DB.")
+
+        return result
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict/reading")
+async def predict_reading(
+    file: UploadFile,
+    fatigue_level: int | None = Form(None),
+    stress_events: bool | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user)
+):
+    try:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file uploaded")
+        audio_bytes = await file.read()
+        if len(audio_bytes) == 0:
+            raise HTTPException(status_code=400, detail="Empty file")
+
+        result = await _run_speech_pipeline(audio_bytes, file.filename, include_transcript=False)
+
+        if current_user:
+            _save_speech_analysis(
+                db, current_user, result,
+                analysis_type="reading",
+                fatigue_level=fatigue_level,
+                stress_events=stress_events,
+            )
 
         return result
 
@@ -257,8 +311,10 @@ async def get_schedule(
         .filter(SpeechAnalysis.user_id == current_user.id)\
         .order_by(SpeechAnalysis.created_at.desc())\
         .all()
-    
+
     speech_count = len(speech_results)
+    interview_count = sum(1 for s in speech_results if s.analysis_type == "interview")
+    reading_count = sum(1 for s in speech_results if s.analysis_type == "reading")
     last_speech = speech_results[0] if speech_count > 0 else None
 
     # MBI schedule: Start (0) and End (60 days after first)
@@ -320,6 +376,8 @@ async def get_schedule(
         speech_days_remaining=speech_days_remaining,
         mbi_count=mbi_count,
         speech_count=speech_count,
+        interview_count=interview_count,
+        reading_count=reading_count,
         can_generate_report=can_generate_report,
         today_task=today_task
     )
@@ -395,30 +453,44 @@ async def get_report_data(
         week_speech = [s for s in speech_analyses if week_start <= (s.created_at.replace(tzinfo=timezone.utc) if s.created_at.tzinfo is None else s.created_at) < week_end]
         week_mbi = [m for m in mbi_results if week_start <= (m.created_at.replace(tzinfo=timezone.utc) if m.created_at.tzinfo is None else m.created_at) < week_end]
         
+        week_interviews = [s for s in week_speech if s.analysis_type == "interview"]
+        week_readings = [s for s in week_speech if s.analysis_type == "reading"]
+
         dp = {
             "week_start": week_start,
             "week_end": week_end,
             "week_number": w + 1,
             "mbi_score": None,
             "speech_score": None,
+            "interview_score": None,
+            "reading_score": None,
             "absolutist_index": None,
             "negative_word_ratio": None,
             "sentiment_polarity": None,
             "speech_count": len(week_speech),
-            "mbi_count": len(week_mbi)
+            "interview_count": len(week_interviews),
+            "reading_count": len(week_readings),
+            "mbi_count": len(week_mbi),
         }
-        
+
         if week_mbi:
             dp["mbi_score"] = sum(m.burnout_index for m in week_mbi) / len(week_mbi)
-            
+
         if week_speech:
             dp["speech_score"] = sum(s.score for s in week_speech) / len(week_speech)
-            
-            # Text features
+
+        if week_interviews:
+            dp["interview_score"] = sum(s.score for s in week_interviews) / len(week_interviews)
+
+        if week_readings:
+            dp["reading_score"] = sum(s.score for s in week_readings) / len(week_readings)
+
+        if week_speech:
+            # Text features (interview only — free-speech is more linguistically meaningful)
             abs_indexes = []
             neg_ratios = []
             sentiments = []
-            for s in week_speech:
+            for s in week_interviews:
                 if s.text_analysis:
                     if "absolutist_index" in s.text_analysis:
                         abs_indexes.append(s.text_analysis["absolutist_index"])
@@ -426,14 +498,14 @@ async def get_report_data(
                         neg_ratios.append(s.text_analysis["negative_word_ratio"])
                     if "sentiment_polarity" in s.text_analysis:
                         sentiments.append(s.text_analysis["sentiment_polarity"])
-                        
+
             if abs_indexes:
                 dp["absolutist_index"] = sum(abs_indexes) / len(abs_indexes)
             if neg_ratios:
                 dp["negative_word_ratio"] = sum(neg_ratios) / len(neg_ratios)
             if sentiments:
                 dp["sentiment_polarity"] = sum(sentiments) / len(sentiments)
-                
+
         report_data.append(dp)
         
     # Check cross validation logic across all available data over 8 weeks

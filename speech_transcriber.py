@@ -33,8 +33,8 @@ _whisper_model = None
 def _load_model():
     global _whisper_model
     if _whisper_model is None:
-        print("Loading Faster-Whisper model (large-v3)...")
-        _whisper_model = WhisperModel("large-v3", device="auto", compute_type="float32")
+        print("Loading Faster-Whisper model (small, int8, cpu)...")
+        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
         print("Faster-Whisper model loaded")
     return _whisper_model
 
@@ -62,7 +62,7 @@ def transcribe_bytes(audio_bytes: bytes) -> str:
 
         audio = _load_audio_from_bytes(audio_bytes, target_sr=16000)
 
-        segments, info = model.transcribe(audio, beam_size=5)
+        segments, info = model.transcribe(audio, beam_size=1)
         text = " ".join([segment.text for segment in segments]).strip()
 
         print(f"Faster-Whisper transcription ({len(text.split())} words): "

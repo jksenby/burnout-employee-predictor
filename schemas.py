@@ -68,7 +68,7 @@ class SpeechAnalysisResponse(BaseModel):
     analysis_type: Optional[str] = None
     filename: str
     file_size_bytes: int
-    transcript: str
+    transcript: Optional[str] = None
     label: str
     score: float
     confidence: float
@@ -76,7 +76,7 @@ class SpeechAnalysisResponse(BaseModel):
     stream_contributions: dict[str, float]
     emotions: dict[str, float]
     dominant_emotion: str
-    text_analysis: dict[str, float | int]
+    text_analysis: Optional[dict[str, float | int]] = None
     acoustic_features: dict[str, float]
     created_at: datetime
 
@@ -99,6 +99,8 @@ class ScheduleResponse(BaseModel):
     speech_days_remaining: int
     mbi_count: int
     speech_count: int
+    interview_count: int = 0
+    reading_count: int = 0
     can_generate_report: bool
     today_task: Optional[str] = None  # "mbi", "speech", or null
 
@@ -109,10 +111,14 @@ class ReportDataPoint(BaseModel):
     week_number: int
     mbi_score: Optional[float] = None
     speech_score: Optional[float] = None
+    interview_score: Optional[float] = None
+    reading_score: Optional[float] = None
     absolutist_index: Optional[float] = None
     negative_word_ratio: Optional[float] = None
     sentiment_polarity: Optional[float] = None
     speech_count: int = 0
+    interview_count: int = 0
+    reading_count: int = 0
     mbi_count: int = 0
 
 class ReportResponse(BaseModel):

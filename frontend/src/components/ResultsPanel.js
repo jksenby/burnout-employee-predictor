@@ -107,22 +107,24 @@ const ResultsPanel = ({ data }) => {
           </div>
         </div>
 
-        <div className="panel linguistic">
-          <div className="panel-header">
-            <span className="panel-icon"><i className="fa-solid fa-pen-nib"></i></span>
-            <span className="panel-title">{t("results_panel.linguistic_panel")}</span>
+        {transcript != null ? (
+          <div className="panel linguistic">
+            <div className="panel-header">
+              <span className="panel-icon"><i className="fa-solid fa-pen-nib"></i></span>
+              <span className="panel-title">{t("results_panel.linguistic_panel")}</span>
+            </div>
+            <div>
+              <MetricRow name={t("results_panel.metrics.sentiment")} value={formatSentiment(text_analysis?.sentiment_polarity)} />
+              <MetricRow name={t("results_panel.metrics.subjectivity")} value={formatPercent(text_analysis?.sentiment_subjectivity)} />
+              <MetricRow name={t("results_panel.metrics.absolutist_index")} value={formatPercent(text_analysis?.absolutist_index)} />
+              <MetricRow name={t("results_panel.metrics.first_person_ratio")} value={formatPercent(text_analysis?.first_person_ratio)} />
+              <MetricRow name={t("results_panel.metrics.negative_words")} value={formatPercent(text_analysis?.negative_word_ratio)} />
+              <MetricRow name={t("results_panel.metrics.hedging_ratio")} value={formatPercent(text_analysis?.hedging_ratio)} />
+              <MetricRow name={t("results_panel.metrics.word_count")} value={text_analysis?.word_count || 0} />
+              <MetricRow name={t("results_panel.metrics.avg_word_length")} value={formatFloat(text_analysis?.avg_word_length)} />
+            </div>
           </div>
-          <div>
-            <MetricRow name={t("results_panel.metrics.sentiment")} value={formatSentiment(text_analysis?.sentiment_polarity)} />
-            <MetricRow name={t("results_panel.metrics.subjectivity")} value={formatPercent(text_analysis?.sentiment_subjectivity)} />
-            <MetricRow name={t("results_panel.metrics.absolutist_index")} value={formatPercent(text_analysis?.absolutist_index)} />
-            <MetricRow name={t("results_panel.metrics.first_person_ratio")} value={formatPercent(text_analysis?.first_person_ratio)} />
-            <MetricRow name={t("results_panel.metrics.negative_words")} value={formatPercent(text_analysis?.negative_word_ratio)} />
-            <MetricRow name={t("results_panel.metrics.hedging_ratio")} value={formatPercent(text_analysis?.hedging_ratio)} />
-            <MetricRow name={t("results_panel.metrics.word_count")} value={text_analysis?.word_count || 0} />
-            <MetricRow name={t("results_panel.metrics.avg_word_length")} value={formatFloat(text_analysis?.avg_word_length)} />
-          </div>
-        </div>
+        ) : null}
 
         <div className="panel stream">
           <div className="panel-header">
@@ -130,7 +132,9 @@ const ResultsPanel = ({ data }) => {
             <span className="panel-title">{t("results_panel.stream_contributions")}</span>
           </div>
           <div>
-            {STREAM_CONFIG.map(s => {
+            {STREAM_CONFIG.filter(s =>
+              s.key !== 'faster_whisper_linguistic' || transcript != null
+            ).map(s => {
               const val = stream_contributions?.[s.key] || 0;
               return (
                 <div key={s.key} className="stream-bar-container">
@@ -148,13 +152,15 @@ const ResultsPanel = ({ data }) => {
         </div>
       </div>
 
-      <div className="transcript-panel">
-        <div className="panel-header">
-          <span className="panel-icon"><i className="fa-solid fa-comment-dots"></i></span>
-          <span className="panel-title" style={{ color: '#0d9488' }}>{t("results_panel.transcript_title")}</span>
+      {transcript != null && (
+        <div className="transcript-panel">
+          <div className="panel-header">
+            <span className="panel-icon"><i className="fa-solid fa-comment-dots"></i></span>
+            <span className="panel-title" style={{ color: '#0d9488' }}>{t("results_panel.transcript_title")}</span>
+          </div>
+          <div className="transcript-text">{transcript || '—'}</div>
         </div>
-        <div className="transcript-text">{transcript || '—'}</div>
-      </div>
+      )}
     </div>
   );
 };

@@ -7,7 +7,8 @@ import LoadingIndicator from "../components/LoadingIndicator";
 import ResultsPanel from "../components/ResultsPanel";
 import { useAuth } from "../context/AuthContext";
 
-const API_URL = "http://localhost:8000/predict";
+const INTERVIEW_API_URL = "http://localhost:8000/predict/interview";
+const READING_API_URL = "http://localhost:8000/predict/reading";
 
 const SpeechAnalysisPage = () => {
   const { t } = useTranslation();
@@ -85,21 +86,24 @@ const SpeechAnalysisPage = () => {
     setData(null);
 
     try {
+      const effectiveType = activeTab === "upload" ? uploadAnalysisType : activeTab;
+      const apiUrl = effectiveType === "interview" ? INTERVIEW_API_URL : READING_API_URL;
+
       const formData = new FormData();
       formData.append("file", file);
       formData.append("fatigue_level", fatigueLevel);
       formData.append("stress_events", stressEvents);
-      formData.append("analysis_type", activeTab === "upload" ? uploadAnalysisType : activeTab);
-      if (questions) {
+      if (effectiveType === "interview" && questions) {
         formData.append("week_number", questions.week_number);
       }
+
 
       const headers = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const response = await fetch(API_URL, {
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers,
         body: formData,

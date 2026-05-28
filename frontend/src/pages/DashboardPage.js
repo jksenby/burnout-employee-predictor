@@ -312,10 +312,14 @@ const DashboardPage = () => {
           <div className="dash-report-stat">
             <span>{t("dashboard.speech_progress", { count: schedule.speech_count })}</span>
             <div className="dash-mini-progress">
-              <div 
-                className="dash-mini-fill speech" 
+              <div
+                className="dash-mini-fill speech"
                 style={{ width: `${Math.min(100, (schedule.speech_count / 8) * 100)}%` }}
               ></div>
+            </div>
+            <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "#666", marginTop: "4px" }}>
+              <span>🎙 {t("dashboard.interviews", "Интервью")}: {schedule.interview_count ?? 0}</span>
+              <span>📖 {t("dashboard.readings", "Чтений")}: {schedule.reading_count ?? 0}</span>
             </div>
           </div>
         </div>

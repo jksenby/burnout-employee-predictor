@@ -70,7 +70,11 @@ const HistoryTable = ({ data, onRowClick, emptyKey = "history_table.no_data" }) 
                 <td className="center ht-emotion">
                   {emotionIcon(rec.dominant_emotion || 'neutral')}
                 </td>
-                <td className="ht-transcript">"{rec.transcript}"</td>
+                <td className="ht-transcript">
+                  {rec.transcript != null
+                    ? `"${rec.transcript}"`
+                    : <span className="muted">{t("history_table.reading_no_transcript", "Чтение текста")}</span>}
+                </td>
               </tr>
             );
           })}

@@ -101,10 +101,14 @@ const ReportPage = () => {
           week: `W${item.week_number}`,
           mbi_score: item.mbi_score !== null ? parseFloat(item.mbi_score.toFixed(3)) : null,
           speech_score: item.speech_score !== null ? parseFloat(item.speech_score.toFixed(3)) : null,
+          interview_score: item.interview_score !== null ? parseFloat((item.interview_score ?? 0).toFixed(3)) : null,
+          reading_score: item.reading_score !== null ? parseFloat((item.reading_score ?? 0).toFixed(3)) : null,
           absolutist_index: item.absolutist_index !== null ? parseFloat(item.absolutist_index.toFixed(3)) : null,
           negative_word_ratio: item.negative_word_ratio !== null ? parseFloat(item.negative_word_ratio.toFixed(3)) : null,
           sentiment_polarity: item.sentiment_polarity !== null ? parseFloat(item.sentiment_polarity.toFixed(3)) : null,
           speech_count: item.speech_count,
+          interview_count: item.interview_count ?? 0,
+          reading_count: item.reading_count ?? 0,
           mbi_count: item.mbi_count,
         }));
 
@@ -630,9 +634,13 @@ const ReportPage = () => {
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={reportData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
-                <linearGradient id="gradSpeech" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="gradInterview" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8884d8" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="#8884d8" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="gradReading" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#00d2ff" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#00d2ff" stopOpacity={0.02} />
                 </linearGradient>
                 <linearGradient id="gradMbi" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.35} />
@@ -644,7 +652,8 @@ const ReportPage = () => {
               <YAxis domain={[0, 1]} tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(v) => `${(v * 100).toFixed(1)}%`} />
               <Legend />
-              <Area type="monotone" dataKey="speech_score" name={t('Acoustic Score', 'Акустика')} stroke="#8884d8" fill="url(#gradSpeech)" strokeWidth={2} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="interview_score" name={t('Interview Score', 'Интервью')} stroke="#8884d8" fill="url(#gradInterview)" strokeWidth={2} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Area type="monotone" dataKey="reading_score" name={t('Reading Score', 'Чтение текста')} stroke="#00d2ff" fill="url(#gradReading)" strokeWidth={2} strokeDasharray="5 3" connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} />
               <Area type="monotone" dataKey="mbi_score" name={t('MBI Score', 'MBI')} stroke="#82ca9d" fill="url(#gradMbi)" strokeWidth={2} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -781,7 +790,8 @@ const ReportPage = () => {
               <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="speech_count" name={t('Speech Analyses', 'Речевых анализов')} fill="#8884d8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="interview_count" name={t('Interviews', 'Интервью')} fill="#8884d8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="reading_count" name={t('Reading Sessions', 'Чтений')} fill="#00d2ff" radius={[4, 4, 0, 0]} />
               <Bar dataKey="mbi_count" name={t('MBI Tests', 'Тестов MBI')} fill="#82ca9d" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
