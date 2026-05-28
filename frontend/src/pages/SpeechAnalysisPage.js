@@ -156,6 +156,27 @@ const SpeechAnalysisPage = () => {
         </div>
       ) : (
         <>
+          {/* Mini-instructions */}
+          <div style={{
+            background: 'rgba(0, 210, 255, 0.05)',
+            border: '1px solid rgba(0, 210, 255, 0.25)',
+            borderRadius: '12px',
+            padding: '20px 24px',
+            marginBottom: '24px'
+          }}>
+            <p style={{ margin: '0 0 14px', fontWeight: 600, color: '#0077aa', fontSize: '14px', letterSpacing: '0.5px' }}>
+              <i className="fa-solid fa-circle-info" style={{ marginRight: '8px' }}></i>
+              {t("speech_analysis.instructions.title")}
+            </p>
+            <ol style={{ margin: 0, paddingLeft: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px' }}>
+              {t("speech_analysis.instructions.steps", { returnObjects: true }).map((step, i) => (
+                <li key={i} style={{ color: '#1a1a1a', fontSize: '13px', lineHeight: '1.5' }}>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+
           <div className="input-tabs">
             <button
               className={`input-tab ${activeTab === "interview" ? "active" : ""}`}
@@ -177,28 +198,28 @@ const SpeechAnalysisPage = () => {
             </button>
           </div>
 
-          <div className="self-report-form" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "rgba(255, 255, 255, 0.05)", borderRadius: "8px", border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-            <h3 style={{ marginBottom: "15px", fontSize: "16px", color: "#fff" }}><i className="fa-solid fa-clipboard-user"></i> {t("speech_analysis.self_report.title")}</h3>
-            
+          <div className="self-report-form" style={{ marginBottom: "20px", padding: "15px", backgroundColor: "rgba(0, 0, 0, 0.04)", borderRadius: "8px", border: "1px solid rgba(0, 0, 0, 0.12)" }}>
+            <h3 style={{ marginBottom: "15px", fontSize: "16px", color: "#1a1a1a" }}><i className="fa-solid fa-clipboard-user"></i> {t("speech_analysis.self_report.title")}</h3>
+
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ display: "block", marginBottom: "8px", color: "#ccc" }}>
-                {t("speech_analysis.self_report.fatigue_label")} <span style={{ fontWeight: "bold", color: "#00d2ff", fontSize: "18px", marginLeft: "10px" }}>{fatigueLevel}</span>
+              <label style={{ display: "block", marginBottom: "8px", color: "#1a1a1a" }}>
+                {t("speech_analysis.self_report.fatigue_label")} <span style={{ fontWeight: "bold", color: "#0077aa", fontSize: "18px", marginLeft: "10px" }}>{fatigueLevel}</span>
               </label>
-              <input 
-                type="range" 
-                min="1" max="10" 
-                value={fatigueLevel} 
+              <input
+                type="range"
+                min="1" max="10"
+                value={fatigueLevel}
                 onChange={(e) => setFatigueLevel(e.target.value)}
-                style={{ width: "100%", accentColor: "#00d2ff" }}
+                style={{ width: "100%", accentColor: "#0077aa" }}
               />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#888", marginTop: "5px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#555", marginTop: "5px" }}>
                 <span>{t("speech_analysis.self_report.full_energy")}</span>
                 <span>{t("speech_analysis.self_report.exhausted")}</span>
               </div>
             </div>
 
             <div>
-              <label style={{ display: "flex", alignItems: "center", cursor: "pointer", color: "#ccc" }}>
+              <label style={{ display: "flex", alignItems: "center", cursor: "pointer", color: "#1a1a1a" }}>
                 <input 
                   type="checkbox" 
                   checked={stressEvents} 

@@ -54,6 +54,8 @@ const DashboardPage = () => {
 
   const bothDue = schedule.mbi_due && schedule.speech_due;
   const allClear = !schedule.mbi_due && !schedule.speech_due;
+  const isFirstMBI = schedule.mbi_count === 0 && schedule.today_task === 'mbi';
+  const isFirstSpeech = schedule.mbi_count >= 1 && schedule.speech_count === 0 && schedule.today_task === 'speech';
 
   const mbiProgress = schedule.mbi_last_date
     ? Math.min(100, ((60 - schedule.mbi_days_remaining) / 60) * 100)
@@ -87,7 +89,11 @@ const DashboardPage = () => {
             </>
           ) : (
             <>
-              <p className="dash-hero-step-label">{t("dashboard.next_step")}</p>
+              <p className="dash-hero-step-label">
+                {(isFirstMBI || isFirstSpeech)
+                  ? t("dashboard.onboarding_step", { step: isFirstMBI ? 1 : 2, total: 2 })
+                  : t("dashboard.next_step")}
+              </p>
               <div className="dash-hero-icon">
                 {schedule.today_task === "mbi" ? (
                   <i className="fa-solid fa-clipboard-list"></i>
@@ -100,6 +106,13 @@ const DashboardPage = () => {
                   ? t("dashboard.mbi_due")
                   : t("dashboard.speech_due")}
               </h2>
+              {(isFirstMBI || isFirstSpeech) && (
+                <p className="dash-hero-desc">
+                  {isFirstMBI
+                    ? t("dashboard.mbi_onboarding_desc")
+                    : t("dashboard.speech_onboarding_desc")}
+                </p>
+              )}
               <div className="dash-hero-pills">
                 <span className="dash-hero-pill">
                   <i className="fa-regular fa-clock"></i>

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const MBIQuestionnaire = () => {
   const { t } = useTranslation();
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -58,10 +60,15 @@ const MBIQuestionnaire = () => {
   if (submitted) {
     return (
       <div className="mbi-container mbi-mcq-container" style={{ textAlign: "center", padding: "40px" }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
         <h2>{t("mbi.thank_you")}</h2>
         <p style={{ color: "#aaa", marginTop: '8px' }}>{t("mbi.success_msg")}</p>
-        <button className="button" style={{ marginTop: '24px' }} onClick={handleReset}>
-          {t("mbi.take_again")}
+        <button
+          className="button"
+          style={{ marginTop: '24px' }}
+          onClick={() => navigate('/')}
+        >
+          {t("mbi.back_to_dashboard")}
         </button>
       </div>
     );

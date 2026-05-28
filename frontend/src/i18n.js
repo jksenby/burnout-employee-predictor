@@ -86,7 +86,10 @@ const resources = {
         "priority_first": "Complete MBI first, then Speech Analysis",
         "then_speech": "After this: Speech Analysis",
         "then_mbi": "After this: MBI Questionnaire",
-        "priority_note_short": "MBI is taken twice only (start & end of the 2-month experiment). Speech analysis is weekly."
+        "priority_note_short": "MBI is taken twice only (start & end of the 2-month experiment). Speech analysis is weekly.",
+        "onboarding_step": "Step {{step}} of {{total}}",
+        "mbi_onboarding_desc": "Before starting the experiment, complete the MBI questionnaire. It takes about 5 minutes.",
+        "speech_onboarding_desc": "MBI questionnaire done! Now complete your first speech analysis."
       },
       "history": {
         "title": "My History",
@@ -169,7 +172,19 @@ const resources = {
           "drag_drop": "or drag & drop",
           "hint": "WAV, MP3, FLAC — 5-60 seconds of speech"
         },
-        "analyze_btn": "Analyze Speech"
+        "analyze_btn": "Analyze Speech",
+        "instructions": {
+          "title": "How to complete Speech Analysis",
+          "steps": [
+            "Press the record button and answer the questions",
+            "Press \"Analyze Speech\"",
+            "Wait for the results",
+            "Switch to the \"Read Text\" tab",
+            "Press the record button and read the text aloud",
+            "Press \"Analyze Speech\"",
+            "Wait for the results"
+          ]
+        }
       },
       "results_panel": {
         "risk_score": "Risk Score",
@@ -237,6 +252,7 @@ const resources = {
         "thank_you": "Thank You!",
         "success_msg": "Your MBI assessment has been successfully recorded.",
         "take_again": "Take another assessment",
+        "back_to_dashboard": "Back to Dashboard",
         "submitting": "Submitting...",
         "submit_btn": "Submit Assessment",
         "please_answer": "Please answer question {{num}}."
@@ -380,7 +396,10 @@ const resources = {
         "priority_first": "Сначала MBI, затем анализ речи",
         "then_speech": "После этого: Анализ речи",
         "then_mbi": "После этого: Опросник MBI",
-        "priority_note_short": "MBI проходится только дважды (начало и конец 2-месячного эксперимента). Анализ речи — еженедельно."
+        "priority_note_short": "MBI проходится только дважды (начало и конец 2-месячного эксперимента). Анализ речи — еженедельно.",
+        "onboarding_step": "Шаг {{step}} из {{total}}",
+        "mbi_onboarding_desc": "Перед началом эксперимента пройдите опросник MBI. Это займёт около 5 минут.",
+        "speech_onboarding_desc": "Опросник MBI пройден! Теперь пройдите первый анализ речи."
       },
       "history": {
         "title": "Моя история",
@@ -462,7 +481,19 @@ const resources = {
           "drag_drop": "или перетащите файл",
           "hint": "WAV, MP3, FLAC — 5-60 секунд речи"
         },
-        "analyze_btn": "Анализировать речь"
+        "analyze_btn": "Анализировать речь",
+        "instructions": {
+          "title": "Как пройти анализ речи",
+          "steps": [
+            "Нажмите на кнопку записи и ответьте на вопросы",
+            "Нажмите «Анализировать речь»",
+            "Дождитесь результатов",
+            "Перейдите во вкладку «Чтение текста»",
+            "Нажмите на кнопку записи и зачитайте текст",
+            "Нажмите «Анализировать речь»",
+            "Дождитесь результатов"
+          ]
+        }
       },
       "results_panel": {
         "risk_score": "Индекс риска",
@@ -530,6 +561,7 @@ const resources = {
         "thank_you": "Спасибо!",
         "success_msg": "Ваша оценка MBI была успешно записана.",
         "take_again": "Пройти еще раз",
+        "back_to_dashboard": "Вернуться на панель",
         "submitting": "Отправка...",
         "submit_btn": "Отправить оценку",
         "please_answer": "Пожалуйста, ответьте на вопрос {{num}}."
@@ -665,7 +697,10 @@ const resources = {
         "priority_first": "Алдымен MBI, содан кейін сөйлеуді талдау",
         "then_speech": "Одан кейін: Сөйлеуді талдау",
         "then_mbi": "Одан кейін: MBI сауалнамасы",
-        "priority_note_short": "MBI тек екі рет өтіледі (эксперименттің басы мен соңы). Сөйлеуді талдау — апта сайын."
+        "priority_note_short": "MBI тек екі рет өтіледі (эксперименттің басы мен соңы). Сөйлеуді талдау — апта сайын.",
+        "onboarding_step": "{{step}}/{{total}} қадам",
+        "mbi_onboarding_desc": "Эксперимент алдында MBI сауалнамасын толтырыңыз. Бұл шамамен 5 минут алады.",
+        "speech_onboarding_desc": "MBI сауалнамасы аяқталды! Енді алғашқы сөйлеу талдауын өтіңіз."
       },
       "history": {
         "title": "Менің тарихым",
@@ -747,7 +782,19 @@ const resources = {
           "drag_drop": "немесе файлды сүйреп апарыңыз",
           "hint": "WAV, MP3, FLAC — 5-60 секундтық сөйлеу"
         },
-        "analyze_btn": "Сөйлеуді талдау"
+        "analyze_btn": "Сөйлеуді талдау",
+        "instructions": {
+          "title": "Сөйлеуді талдауды қалай өтуге болады",
+          "steps": [
+            "Жазу түймесін басып, сұрақтарға жауап беріңіз",
+            "«Сөйлеуді талдау» түймесін басыңыз",
+            "Нәтижелерді күтіңіз",
+            "«Мәтін оқу» қосымша бетіне өтіңіз",
+            "Жазу түймесін басып, мәтінді дауыстап оқыңыз",
+            "«Сөйлеуді талдау» түймесін басыңыз",
+            "Нәтижелерді күтіңіз"
+          ]
+        }
       },
       "results_panel": {
         "risk_score": "Қауіп индексі",
@@ -815,6 +862,7 @@ const resources = {
         "thank_you": "Рақмет сізге!",
         "success_msg": "Сіздің MBI бағалауыңыз сәтті жазылды.",
         "take_again": "Басқа бағалауды тапсыру",
+        "back_to_dashboard": "Бақылау тақтасына оралу",
         "submitting": "Жіберілуде...",
         "submit_btn": "Бағалауды жіберу",
         "please_answer": "Өтінемін, {{num}}-сұраққа жауап беріңіз."
