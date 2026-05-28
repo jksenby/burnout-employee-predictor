@@ -15,6 +15,8 @@ const AuthPage = () => {
   const [age, setAge] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
@@ -38,7 +40,10 @@ const AuthPage = () => {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setError("");
+    setPrivacyAccepted(false);
   };
+
+  const privacySections = ["s1", "s2", "s3", "s4", "s5", "s6"];
 
   return (
     <div className="auth-page">
@@ -191,6 +196,29 @@ const AuthPage = () => {
             />
           </div>
 
+          {!isLogin && (
+            <div className="auth-privacy-check">
+              <input
+                id="privacy"
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                required
+              />
+              <label htmlFor="privacy">
+                {t("privacy.checkbox_prefix")}
+                <button
+                  type="button"
+                  className="auth-privacy-link"
+                  onClick={() => setShowPrivacyModal(true)}
+                >
+                  {t("privacy.link")}
+                </button>
+                {t("privacy.checkbox_suffix", "")}
+              </label>
+            </div>
+          )}
+
           {error && (
             <div className="auth-error">
               <i className="fa-solid fa-circle-exclamation"></i>
@@ -198,7 +226,11 @@ const AuthPage = () => {
             </div>
           )}
 
-          <button type="submit" className="auth-submit" disabled={submitting}>
+          <button
+            type="submit"
+            className="auth-submit"
+            disabled={submitting || (!isLogin && !privacyAccepted)}
+          >
             {submitting ? (
               <span className="auth-submit-loading">
                 <span className="auth-spinner"></span>
@@ -229,6 +261,52 @@ const AuthPage = () => {
           </button>
         </p>
       </div>
+
+      {showPrivacyModal && (
+        <div className="privacy-modal-overlay" onClick={() => setShowPrivacyModal(false)}>
+          <div className="privacy-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="privacy-modal-header">
+              <h2>{t("privacy.modal_title")}</h2>
+              <button
+                className="privacy-modal-close"
+                onClick={() => setShowPrivacyModal(false)}
+                type="button"
+                aria-label={t("privacy.close")}
+              >
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <p className="privacy-modal-date">{t("privacy.last_updated")}</p>
+            <div className="privacy-modal-body">
+              {privacySections.map((s) => (
+                <div key={s} className="privacy-section">
+                  <h3>{t(`privacy.${s}_title`)}</h3>
+                  <p>{t(`privacy.${s}_body`)}</p>
+                </div>
+              ))}
+            </div>
+            <div className="privacy-modal-footer">
+              <button
+                className="privacy-btn-accept"
+                type="button"
+                onClick={() => {
+                  setPrivacyAccepted(true);
+                  setShowPrivacyModal(false);
+                }}
+              >
+                {t("privacy.accept")}
+              </button>
+              <button
+                className="privacy-btn-close"
+                type="button"
+                onClick={() => setShowPrivacyModal(false)}
+              >
+                {t("privacy.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

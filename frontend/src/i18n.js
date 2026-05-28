@@ -272,6 +272,26 @@ const resources = {
         "loading": "Running multimodal analysis...",
         "pipeline": "Processing through HuBERT → WavLM → Faster-Whisper pipeline",
         "error_loading": "Error loading data."
+      },
+      "privacy": {
+        "checkbox_prefix": "I agree to the ",
+        "link": "Privacy Policy",
+        "modal_title": "Privacy Policy",
+        "close": "Close",
+        "accept": "Accept & Close",
+        "last_updated": "Last updated: May 28, 2026",
+        "s1_title": "1. Data We Collect",
+        "s1_body": "During registration we collect: username, email address, phone number, gender, and age. Your password is stored as a bcrypt hash and never in plain text.\n\nDuring use of the application we collect: speech recordings (audio files), MBI questionnaire responses, self-assessment data (fatigue level, stress events), and session timestamps.",
+        "s2_title": "2. Purpose of Processing",
+        "s2_body": "All data is used exclusively for research purposes — to assess professional burnout risk using multimodal machine-learning analysis of speech and psychological questionnaires. Data is never used for commercial purposes.",
+        "s3_title": "3. Storage & Security",
+        "s3_body": "Your data is stored locally in a secured database. Passwords are hashed with bcrypt. Access is protected by JWT authentication. Your data is not shared with any third parties.",
+        "s4_title": "4. Retention Period",
+        "s4_body": "Data is stored for the duration of the 2-month experiment. You may request deletion of your data at any time by contacting us.",
+        "s5_title": "5. Your Rights",
+        "s5_body": "You have the right to: access your personal data, request correction or deletion, and withdraw consent to processing at any time.",
+        "s6_title": "6. Contact",
+        "s6_body": "For questions regarding the processing of your personal data, contact: zhalgas.karsenbai@gmail.com"
       }
     }
   },
@@ -545,6 +565,26 @@ const resources = {
         "loading": "Выполнение мультимодального анализа...",
         "pipeline": "Обработка через конвейер HuBERT → WavLM → Faster-Whisper",
         "error_loading": "Ошибка при загрузке данных."
+      },
+      "privacy": {
+        "checkbox_prefix": "Я соглашаюсь с ",
+        "link": "Политикой конфиденциальности",
+        "modal_title": "Политика конфиденциальности",
+        "close": "Закрыть",
+        "accept": "Принять и закрыть",
+        "last_updated": "Последнее обновление: 28 мая 2026 г.",
+        "s1_title": "1. Собираемые данные",
+        "s1_body": "При регистрации мы собираем: имя пользователя, адрес электронной почты, номер телефона, пол и возраст. Пароль хранится в виде bcrypt-хеша — никогда в открытом виде.\n\nВ процессе использования приложения мы собираем: аудиозаписи речи, результаты опросника MBI, данные самооценки (уровень усталости, стрессовые события) и временные метки сессий.",
+        "s2_title": "2. Цели обработки данных",
+        "s2_body": "Все данные используются исключительно в исследовательских целях — для оценки риска профессионального выгорания с применением мультимодального ML-анализа речи и психологических опросников. Данные никогда не используются в коммерческих целях.",
+        "s3_title": "3. Хранение и защита данных",
+        "s3_body": "Данные хранятся локально в защищённой базе данных. Пароли хешируются с помощью bcrypt. Доступ защищён JWT-аутентификацией. Данные не передаются третьим лицам.",
+        "s4_title": "4. Срок хранения данных",
+        "s4_body": "Данные хранятся в течение всего 2-месячного эксперимента. Вы можете запросить удаление своих данных в любое время, обратившись к нам.",
+        "s5_title": "5. Права пользователя",
+        "s5_body": "Вы имеете право: получить доступ к своим персональным данным, запросить их исправление или удаление, а также отозвать согласие на обработку в любое время.",
+        "s6_title": "6. Контакты",
+        "s6_body": "По вопросам обработки персональных данных обращайтесь: zhalgas.karsenbai@gmail.com"
       }
     }
   },
@@ -810,6 +850,27 @@ const resources = {
         "loading": "Мультимодальды талдау жүргізілуде...",
         "pipeline": "HuBERT → WavLM → Faster-Whisper конвейері арқылы өңдеу",
         "error_loading": "Деректерді жүктеу кезінде қате пайда болды."
+      },
+      "privacy": {
+        "checkbox_prefix": "Мен ",
+        "link": "Құпиялылық саясатымен",
+        "modal_title": "Құпиялылық саясаты",
+        "close": "Жабу",
+        "accept": "Қабылдап, жабу",
+        "last_updated": "Соңғы жаңарту: 2026 жылғы 28 мамыр",
+        "s1_title": "1. Жиналатын деректер",
+        "s1_body": "Тіркелу кезінде біз жинаймыз: пайдаланушы аты, электрондық пошта мекенжайы, телефон нөмірі, жынысы және жасы. Құпия сөз bcrypt хэші ретінде сақталады — ешқашан ашық түрде емес.\n\nҚолданба пайдалану барысында біз жинаймыз: сөйлеу аудио жазбалары, MBI сауалнамасының нәтижелері, өзін-өзі бағалау деректері (шаршау деңгейі, стресс оқиғалары) және сессия уақыт белгілері.",
+        "s2_title": "2. Деректерді өңдеу мақсаттары",
+        "s2_body": "Барлық деректер тек зерттеу мақсатында пайдаланылады — сөйлеуді мультимодальды ML-талдау және психологиялық сауалнамалар арқылы кәсіби күйіп кету қаупін бағалау үшін. Деректер ешқашан коммерциялық мақсатта пайдаланылмайды.",
+        "s3_title": "3. Сақтау және қорғау",
+        "s3_body": "Деректер қауіпсіз деректер базасында жергілікті түрде сақталады. Құпия сөздер bcrypt арқылы хэштеледі. Қол жеткізу JWT-аутентификациямен қорғалған. Деректер үшінші тараптарға берілмейді.",
+        "s4_title": "4. Сақтау мерзімі",
+        "s4_body": "Деректер 2 айлық эксперимент кезінде сақталады. Деректеріңізді жою туралы сұрауды кез келген уақытта бізге хабарласу арқылы жіберуге болады.",
+        "s5_title": "5. Пайдаланушы құқықтары",
+        "s5_body": "Сізде мынадай құқықтар бар: жеке деректеріңізге қол жеткізу, оларды түзету немесе жою туралы сұрау, сондай-ақ кез келген уақытта өңдеуге берілген келісімді кері алу.",
+        "s6_title": "6. Байланыс",
+        "s6_body": "Жеке деректерді өңдеуге қатысты сұрақтар бойынша хабарласыңыз: zhalgas.karsenbai@gmail.com",
+        "checkbox_suffix": " келісемін"
       }
     }
   }
