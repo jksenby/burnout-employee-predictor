@@ -245,6 +245,148 @@ const ReportPage = () => {
     };
   }, [historyData]);
 
+  const currentStateText = useMemo(() => {
+    if (!verdictData || !summaryStats) return null;
+    const {
+      newestSpeech, newestMbi, oldestSpeech, oldestMbi,
+      speechDelta, mbiDelta,
+      avgSentiment, dominantEmotionLabel, avgFatigueLevel, stressEventsCount,
+    } = verdictData;
+
+    const sentences = [];
+
+    // 1. Описание текущего уровня риска простыми словами
+    const latestSpeechRisk = newestSpeech?.score ?? null;
+    const latestMbiRisk = newestMbi?.burnout_index ?? null;
+
+    if (latestSpeechRisk !== null) {
+      if (latestSpeechRisk >= 0.65) {
+        sentences.push(
+          `Судя по последней записи голоса, прямо сейчас вы находитесь в зоне повышенного риска — ` +
+          `система оценивает вероятность выгорания на ${(latestSpeechRisk * 100).toFixed(0)}%. ` +
+          `Это значит, что в вашей речи заметны признаки усталости, напряжения или эмоционального истощения.`
+        );
+      } else if (latestSpeechRisk >= 0.4) {
+        sentences.push(
+          `По последней записи голоса ваш уровень риска выгорания — умеренный (${(latestSpeechRisk * 100).toFixed(0)}%). ` +
+          `Пока всё не критично, но система замечает некоторые признаки усталости в речи — стоит держать это под вниманием.`
+        );
+      } else {
+        sentences.push(
+          `По последней записи голоса ситуация выглядит спокойно — риск выгорания низкий (${(latestSpeechRisk * 100).toFixed(0)}%). ` +
+          `В речи не обнаружено выраженных признаков усталости или эмоционального истощения.`
+        );
+      }
+    }
+
+    if (latestMbiRisk !== null) {
+      if (latestMbiRisk >= 0.65) {
+        sentences.push(
+          `Тест MBI также подтверждает высокий уровень выгорания (${(latestMbiRisk * 100).toFixed(0)}%): ` +
+          `скорее всего, вы чувствуете сильную усталость от работы и эмоциональное опустошение.`
+        );
+      } else if (latestMbiRisk >= 0.4) {
+        sentences.push(
+          `По результатам теста MBI выгорание находится на умеренном уровне (${(latestMbiRisk * 100).toFixed(0)}%) — ` +
+          `это сигнал, что стоит обратить внимание на баланс работы и отдыха.`
+        );
+      } else {
+        sentences.push(
+          `Тест MBI показывает низкий уровень выгорания (${(latestMbiRisk * 100).toFixed(0)}%) — ` +
+          `по самооценке вы чувствуете себя достаточно хорошо.`
+        );
+      }
+    }
+
+    // 2. Что изменилось за период
+    const hasSpeechChange = speechDelta !== null && Math.abs(speechDelta) > 0.02;
+    const hasMbiChange = mbiDelta !== null && Math.abs(mbiDelta) > 0.02;
+
+    if (hasSpeechChange || hasMbiChange) {
+      let changeParts = [];
+      if (hasSpeechChange) {
+        const dir = speechDelta > 0 ? 'вырос' : 'снизился';
+        const emoji = speechDelta > 0 ? 'хуже' : 'лучше';
+        changeParts.push(
+          `речевой риск ${dir} на ${Math.abs(speechDelta * 100).toFixed(1)}% ` +
+          `(с ${(oldestSpeech.score * 100).toFixed(0)}% до ${(newestSpeech.score * 100).toFixed(0)}%) — ` +
+          `это ${emoji}, чем в начале`
+        );
+      }
+      if (hasMbiChange) {
+        const dir = mbiDelta > 0 ? 'вырос' : 'снизился';
+        const emoji = mbiDelta > 0 ? 'хуже' : 'лучше';
+        changeParts.push(
+          `показатель MBI ${dir} на ${Math.abs(mbiDelta * 100).toFixed(1)}% ` +
+          `(с ${(oldestMbi.burnout_index * 100).toFixed(0)}% до ${(newestMbi.burnout_index * 100).toFixed(0)}%) — ` +
+          `это ${emoji}, чем в начале`
+        );
+      }
+      sentences.push(`За время наблюдения: ${changeParts.join('; ')}.`);
+    } else if (speechDelta !== null || mbiDelta !== null) {
+      sentences.push('За время наблюдения показатели практически не изменились — ситуация стабильная.');
+    } else {
+      sentences.push('Пока данных слишком мало для сравнения — пройдите ещё несколько сессий, чтобы увидеть динамику.');
+    }
+
+    // 3. Эмоциональный фон
+    if (dominantEmotionLabel) {
+      const emo = dominantEmotionLabel.toLowerCase();
+      sentences.push(
+        `Чаще всего в вашей речи система улавливает ${emo} — ` +
+        `это наиболее частая эмоция за весь период наблюдений.`
+      );
+    }
+
+    if (avgSentiment !== null) {
+      if (avgSentiment < -0.3) {
+        sentences.push(
+          'В целом то, как вы говорите, звучит довольно мрачно — в словах много негатива. ' +
+          'Это может быть признаком того, что вам сейчас непросто, даже если внешне всё кажется нормальным.'
+        );
+      } else if (avgSentiment < -0.1) {
+        sentences.push('Речь немного окрашена в негативные тона, хотя ничего критичного нет.');
+      } else if (avgSentiment > 0.2) {
+        sentences.push('Тональность вашей речи в целом позитивная — это хороший знак.');
+      } else {
+        sentences.push('Тональность речи нейтральная — без явного позитива или негатива.');
+      }
+    }
+
+    // 4. Усталость и стресс
+    if (avgFatigueLevel !== null) {
+      if (avgFatigueLevel >= 4) {
+        sentences.push(
+          `Средний уровень усталости по записям — ${avgFatigueLevel.toFixed(1)} из 5. ` +
+          'Это высокий показатель: похоже, вы регулярно приходите на сессии уже довольно уставшим.'
+        );
+      } else if (avgFatigueLevel >= 3) {
+        sentences.push(
+          `Средний уровень усталости — ${avgFatigueLevel.toFixed(1)} из 5. ` +
+          'Умеренно высоко — стоит следить за режимом отдыха.'
+        );
+      } else {
+        sentences.push(`Уровень усталости в среднем невысокий (${avgFatigueLevel.toFixed(1)} из 5).`);
+      }
+    }
+
+    if (stressEventsCount > 0 && summaryStats.totalSpeech > 0) {
+      const ratio = stressEventsCount / summaryStats.totalSpeech;
+      if (ratio > 0.5) {
+        sentences.push(
+          `В ${stressEventsCount} из ${summaryStats.totalSpeech} сессий система зафиксировала стрессовые паттерны в речи — ` +
+          'это больше половины всех записей.'
+        );
+      } else if (stressEventsCount > 0) {
+        sentences.push(
+          `В ${stressEventsCount} ${stressEventsCount === 1 ? 'сессии' : 'сессиях'} из ${summaryStats.totalSpeech} были замечены признаки стресса в речи.`
+        );
+      }
+    }
+
+    return sentences.join(' ');
+  }, [verdictData, summaryStats]);
+
   const mbiSubScaleData = useMemo(() => {
     if (!historyData) return [];
     return [...(historyData.mbi_results || [])]
@@ -448,6 +590,27 @@ const ReportPage = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════
+          1b. ТЕКУЩЕЕ СОСТОЯНИЕ — читаемый абзац
+      ═══════════════════════════════════════════════ */}
+      {currentStateText && (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #e5e7eb',
+          borderLeft: `4px solid ${ti.color}`,
+          borderRadius: 10,
+          padding: '18px 22px',
+          marginBottom: 28,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 8 }}>
+            Текущее состояние
+          </div>
+          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.75, color: '#1f2937' }}>
+            {currentStateText}
+          </p>
         </div>
       )}
 
