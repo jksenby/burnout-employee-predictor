@@ -73,7 +73,6 @@ const DashboardPage = () => {
         </p>
       </div>
 
-      {/* ── Today's Task Hero ── */}
       <div className={`dash-hero ${allClear ? "clear" : schedule.today_task}`}>
         <div className="dash-hero-glow"></div>
         <div className="dash-hero-content">
@@ -165,9 +164,7 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* ── Schedule Cards ── */}
       <div className="dash-cards">
-        {/* MBI Card */}
         <div className={`dash-card ${schedule.mbi_due ? "due" : ""}`}>
           <div className="dash-card-header">
             <div className="dash-card-icon-wrap mbi">
@@ -222,7 +219,6 @@ const DashboardPage = () => {
           </button>
         </div>
 
-        {/* Speech Card */}
         <div className={`dash-card ${schedule.speech_due ? "due" : ""}`}>
           <div className="dash-card-header">
             <div className="dash-card-icon-wrap speech">
@@ -283,7 +279,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* ── Report Status Card ── */}
       <div className={`dash-report-card ${schedule.can_generate_report ? "ready" : "locked"}`}>
         <div className="dash-report-header">
           <div className="dash-report-icon">
@@ -354,7 +349,6 @@ const DashboardPage = () => {
         </button>
       </div>
 
-      {/* ── Footnote ── */}
       <p className="dash-footnote">
         <i className="fa-solid fa-circle-info"></i>
         {t("dashboard.priority_note_short")}

@@ -47,7 +47,6 @@ const AuthPage = () => {
 
   return (
     <div className="auth-page">
-      {/* Animated background orbs */}
       <div className="auth-bg-orbs">
         <div className="auth-orb auth-orb-1"></div>
         <div className="auth-orb auth-orb-2"></div>

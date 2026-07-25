@@ -25,7 +25,6 @@ import os
 from auth import get_current_user, get_optional_user
 from routes.auth import router as auth_router
 
-# Create DB tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Burnout Predictor API — Multimodal Late Fusion")
@@ -56,37 +55,18 @@ async def root():
 
 
 async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transcript: bool = True) -> dict:
-    """Run the full multimodal speech analysis pipeline and return raw results.
-
-    Set include_transcript=False (reading mode) to skip Faster-Whisper and NLP text features.
-    """
-    print(f"\n{'='*50}")
-    print(f"Processing: {filename} ({len(audio_bytes)} bytes)")
-    print(f"{'='*50}")
-
-    print("\n[Stream 1] HuBERT — acoustic embedding...")
     hubert_embedding = extract_hubert_embedding(audio_bytes)
-
-    print("[Stream 1] SpeechBrain — emotion recognition...")
     emotion_result = extract_emotion(audio_bytes)
-
-    print("\n[Stream 2] WavLM — prosody embedding...")
     wavlm_embedding = extract_wavlm_embedding(audio_bytes)
-
-    print("[Stream 2] Librosa — acoustic features...")
     acoustic_features = extract_acoustic_features(audio_bytes)
 
     if include_transcript:
-        print("\n[Stream 3] Faster-Whisper — transcription (multilingual)...")
         transcript = transcribe_bytes(audio_bytes)
-        print("[Stream 3] NLP — linguistic features...")
         text_feat = extract_text_features(transcript)
     else:
-        print("\n[Stream 3] Skipped — reading mode (no transcription needed)")
         transcript = None
         text_feat = {}
 
-    print("\n[Fusion] Running multimodal late fusion...")
     result = predict(
         hubert_embedding=hubert_embedding,
         wavlm_embedding=wavlm_embedding,
@@ -111,10 +91,6 @@ async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transc
         "pause_ratio": acoustic_features.get("pause_ratio", 0),
         "spectral_centroid_mean": acoustic_features.get("spectral_centroid_mean", 0),
     }
-
-    print(f"\n{'='*50}")
-    print(f"Result: {result['label']} (score={result['score']:.3f})")
-    print(f"{'='*50}\n")
 
     return result
 
@@ -142,7 +118,6 @@ def _save_speech_analysis(db, current_user, result: dict, *, analysis_type: str,
     )
     db.add(db_analysis)
     db.commit()
-    print(f"[{current_user.username}] Saved {analysis_type} analysis to DB.")
 
 
 @app.post("/predict/interview")
@@ -219,19 +194,15 @@ async def submit_mbi(
 ):
     try:
         answers = payload.answers
-        
-        # Subscales indices (0-based)
         ee_indices = [0, 1, 2, 5, 7, 12, 13, 15, 19]
         dp_indices = [4, 9, 10, 14, 21]
         pa_indices = [3, 6, 8, 11, 16, 17, 18, 20]
-        
+
         ee_score = sum(answers.get(f"q{i}", 0) for i in ee_indices)
         dp_score = sum(answers.get(f"q{i}", 0) for i in dp_indices)
         pa_score = sum(answers.get(f"q{i}", 0) for i in pa_indices)
-        
         reduction_score = 32 - pa_score
 
-        # Systemic Burnout Syndrome Index (geometric formula, normalized for 0-4 scale)
         # SBSI = sqrt((EE/36)^2 + (DP/20)^2 + ((32-PA)/32)^2) / sqrt(3)
         sbsi = (
             ((ee_score / 36) ** 2 + (dp_score / 20) ** 2 + (reduction_score / 32) ** 2) / 3
@@ -239,7 +210,8 @@ async def submit_mbi(
 
         db_mbi = MBIResult(
             user_id=current_user.id,
-            gender=current_user.gender, # Taken from profile
+            gender=current_user.gender,
+            answers=answers,
             answers=answers,
             emotional_exhaustion=ee_score,
             depersonalization=dp_score,
@@ -296,17 +268,15 @@ async def get_schedule(
 ):
     now = datetime.now(timezone.utc)
 
-    # All MBI results for the user to determine start and count
     mbi_results = db.query(MBIResult)\
         .filter(MBIResult.user_id == current_user.id)\
         .order_by(MBIResult.created_at.asc())\
         .all()
-    
+
     mbi_count = len(mbi_results)
     first_mbi = mbi_results[0] if mbi_count > 0 else None
     last_mbi = mbi_results[-1] if mbi_count > 0 else None
 
-    # Speech schedule: Weekly
     speech_results = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id)\
         .order_by(SpeechAnalysis.created_at.desc())\
@@ -317,31 +287,26 @@ async def get_schedule(
     reading_count = sum(1 for s in speech_results if s.analysis_type == "reading")
     last_speech = speech_results[0] if speech_count > 0 else None
 
-    # MBI schedule: Start (0) and End (60 days after first)
     mbi_due = False
     mbi_days_remaining = 0
     mbi_next = now.strftime("%Y-%m-%d")
     mbi_last_date = last_mbi.created_at if last_mbi else None
 
     if mbi_count == 0:
-        # Beginning of experiment
         mbi_due = True
         mbi_days_remaining = 0
         mbi_next = now.strftime("%Y-%m-%d")
     elif mbi_count == 1:
-        # Check if 60 days passed since the first MBI
         mbi_first_date = first_mbi.created_at.replace(tzinfo=timezone.utc) if first_mbi.created_at.tzinfo is None else first_mbi.created_at
         days_since_start = (now - mbi_first_date).days
         mbi_days_remaining = max(0, MBI_CYCLE_DAYS - days_since_start)
         mbi_due = days_since_start >= MBI_CYCLE_DAYS
         mbi_next = (mbi_first_date + timedelta(days=MBI_CYCLE_DAYS)).strftime("%Y-%m-%d")
     else:
-        # Experiment finished for MBI (already did 2 or more)
         mbi_due = False
         mbi_days_remaining = 0
         mbi_next = "Finished"
 
-    # Speech schedule: Weekly
     if last_speech and last_speech.created_at:
         speech_last = last_speech.created_at.replace(tzinfo=timezone.utc) if last_speech.created_at.tzinfo is None else last_speech.created_at
         speech_days_since = (now - speech_last).days
@@ -355,10 +320,8 @@ async def get_schedule(
         speech_next = now.strftime("%Y-%m-%d")
         speech_last_date = None
 
-    # Report availability: 2 MBI and 8 Speech
     can_generate_report = (mbi_count >= 2) and (speech_count >= 8)
 
-    # Priority: MBI > Speech
     today_task = None
     if mbi_due:
         today_task = "mbi"
@@ -428,24 +391,19 @@ async def get_report_data(
     now = datetime.now(timezone.utc)
     eight_weeks_ago = now - timedelta(weeks=8)
     
-    # We will gather all data within the last 8 weeks
     speech_analyses = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id, SpeechAnalysis.created_at >= eight_weeks_ago)\
         .order_by(SpeechAnalysis.created_at.asc())\
         .all()
-        
+
     mbi_results = db.query(MBIResult)\
         .filter(MBIResult.user_id == current_user.id, MBIResult.created_at >= eight_weeks_ago)\
         .order_by(MBIResult.created_at.asc())\
         .all()
-        
-    # Group by week (1 to 8) based on distance from eight_weeks_ago
-    # Actually, it's better to calculate week segments starting from 8 weeks ago
+
     report_data = []
-    
     cross_val_failed = False
-    
-    # We'll calculate weekly averages for the metrics
+
     for w in range(8):
         week_start = eight_weeks_ago + timedelta(weeks=w)
         week_end = week_start + timedelta(weeks=1)
@@ -486,7 +444,6 @@ async def get_report_data(
             dp["reading_score"] = sum(s.score for s in week_readings) / len(week_readings)
 
         if week_speech:
-            # Text features (interview only — free-speech is more linguistically meaningful)
             abs_indexes = []
             neg_ratios = []
             sentiments = []
@@ -507,8 +464,7 @@ async def get_report_data(
                 dp["sentiment_polarity"] = sum(sentiments) / len(sentiments)
 
         report_data.append(dp)
-        
-    # Check cross validation logic across all available data over 8 weeks
+
     avg_mbi = None
     avg_speech = None
     avg_abs = None
@@ -536,8 +492,7 @@ async def get_report_data(
         avg_sent = sum(valid_sent) / len(valid_sent)
         
     cross_validation_message = None
-    
-    # If acoustic/mbi score is high but linguistic features are healthy
+
     if avg_speech is not None and avg_speech > 0.6:
         if avg_abs is not None and avg_abs < 0.05 and avg_neg is not None and avg_neg < 0.05 and avg_sent is not None and avg_sent > 0.0:
             cross_val_failed = True
@@ -560,60 +515,50 @@ async def generate_pdf_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Check eligibility
     mbi_count = db.query(MBIResult).filter(MBIResult.user_id == current_user.id).count()
     speech_count = db.query(SpeechAnalysis).filter(SpeechAnalysis.user_id == current_user.id).count()
-    
+
     if mbi_count < 2 or speech_count < 8:
         raise HTTPException(status_code=403, detail="Requirements not met: 2 MBI and 8 Speech analyses required.")
-        
-    # Get all data
+
     speech_analyses = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id)\
         .order_by(SpeechAnalysis.created_at.asc())\
         .all()
-        
+
     mbi_results = db.query(MBIResult)\
         .filter(MBIResult.user_id == current_user.id)\
         .order_by(MBIResult.created_at.asc())\
         .all()
 
-    # Generate PDF
     pdf = FPDF()
     pdf.add_page()
-    
-    # Try to load fonts that support Cyrillic
+
     font_name = "Cyrillic"
     font_added = False
-    
-    # Windows paths for Arial (standard, bold, italic)
+
     arial_reg = "C:\\Windows\\Fonts\\arial.ttf"
     arial_bold = "C:\\Windows\\Fonts\\arialbd.ttf"
     arial_ital = "C:\\Windows\\Fonts\\ariali.ttf"
-    
+
     if os.path.exists(arial_reg):
         try:
             pdf.add_font(font_name, "", arial_reg)
-            
-            # Add Bold
             if os.path.exists(arial_bold):
                 pdf.add_font(font_name, "B", arial_bold)
             else:
                 pdf.add_font(font_name, "B", arial_reg)
-                
-            # Add Italic
             if os.path.exists(arial_ital):
                 pdf.add_font(font_name, "I", arial_ital)
             else:
                 pdf.add_font(font_name, "I", arial_reg)
-            
             pdf.set_font(font_name, size=12)
             font_added = True
         except Exception as e:
             print(f"Error adding Arial font: {e}")
 
     if not font_added:
-        # Linux fallback (DejaVu)
+        # Linux fallback
         dejavu_reg = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
         dejavu_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
         dejavu_ital = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"
@@ -641,28 +586,24 @@ async def generate_pdf_report(
 
     from fpdf.enums import XPos, YPos
 
-    # Title
     pdf.set_font(font_name, "B", 16)
     pdf.cell(0, 10, "Burnout Assessment Report", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(10)
-    
-    # User Info
+
     pdf.set_font(font_name, "B", 12)
     pdf.cell(0, 10, f"Employee: {current_user.username}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font(font_name, "", 12)
     pdf.cell(0, 10, f"Email: {current_user.email}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(0, 10, f"Report Date: {datetime.now().strftime('%Y-%m-%d')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(10)
-    
-    # Summary
+
     pdf.set_font(font_name, "B", 14)
     pdf.cell(0, 10, "Assessment Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font(font_name, "", 12)
     pdf.cell(0, 10, f"- Total MBI Questionnaires: {mbi_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(0, 10, f"- Total Speech Analyses: {speech_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
-    
-    # MBI Results
+
     pdf.set_font(font_name, "B", 14)
     pdf.cell(0, 10, "MBI Questionnaire Results", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font(font_name, "B", 10)
@@ -682,24 +623,21 @@ async def generate_pdf_report(
         pdf.cell(30, 10, f"{res.burnout_index:.2f}", border=1)
         pdf.ln()
     pdf.ln(10)
-    
-    # Speech Results
+
     pdf.set_font(font_name, "B", 14)
     pdf.cell(0, 10, "Speech Analysis History", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    
+
     if speech_analyses:
         avg_score = sum(s.score for s in speech_analyses) / len(speech_analyses)
         pdf.set_font(font_name, "", 12)
         pdf.cell(0, 10, f"Average Burnout Risk Score (Acoustics/NLP): {avg_score:.2f}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    
-    # Final Disclaimer
+
     pdf.ln(20)
     pdf.set_font(font_name, "I", 10)
     pdf.multi_cell(0, 10, "Disclaimer: This report is generated by an AI-based burnout prediction system. It should be used for informational purposes only and does not replace professional medical or psychological advice.")
 
-    # Output to buffer
-    pdf_output = pdf.output()
     # fpdf2.output() returns bytes by default if no filename is provided
+    pdf_output = pdf.output()
     buffer = io.BytesIO(pdf_output)
     
     return StreamingResponse(

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-// Encode an AudioBuffer into a WAV Blob
 function audioBufferToWav(buffer) {
   const numChannels = 1;
   const sampleRate = buffer.sampleRate;
@@ -40,7 +39,6 @@ function audioBufferToWav(buffer) {
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
 
-// Convert any audio Blob to WAV using Web Audio API
 async function convertToWav(blob) {
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const arrayBuffer = await blob.arrayBuffer();
@@ -69,7 +67,6 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
   const timerRef = useRef(null);
   const streamRef = useRef(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -99,7 +96,6 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
       mediaRecorder.onstop = async () => {
         const webmBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
 
-        // Convert webm → WAV so the backend (soundfile) can read it
         const wavBlob = await convertToWav(webmBlob);
         const recordedFile = new File(
           [wavBlob],
@@ -108,12 +104,11 @@ const AudioRecorder = ({ file, audioUrl, loading, onFileSelect, onAnalyze, quest
         );
         onFileSelect(recordedFile);
 
-        // Stop all tracks
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       };
 
-      mediaRecorder.start(250); // collect data every 250ms
+      mediaRecorder.start(250);
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
       setElapsed(0);

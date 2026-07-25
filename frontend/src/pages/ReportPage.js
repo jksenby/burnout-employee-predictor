@@ -150,10 +150,9 @@ const ReportPage = () => {
     return { totalSpeech: speeches.length, totalMbi: mbis.length, avgSpeech, latestMbi, trend };
   }, [historyData, reportData]);
 
-  // ── Verdict: first-vs-last comparison + narrative ──
   const verdictData = useMemo(() => {
     if (!historyData) return null;
-    const speeches = historyData.speech_analyses || []; // DESC: index 0 = newest
+    const speeches = historyData.speech_analyses || [];
     const mbis = historyData.mbi_results || [];
 
     const newestSpeech = speeches[0] || null;
@@ -255,7 +254,6 @@ const ReportPage = () => {
 
     const sentences = [];
 
-    // 1. Описание текущего уровня риска простыми словами
     const latestSpeechRisk = newestSpeech?.score ?? null;
     const latestMbiRisk = newestMbi?.burnout_index ?? null;
 
@@ -298,7 +296,6 @@ const ReportPage = () => {
       }
     }
 
-    // 2. Что изменилось за период
     const hasSpeechChange = speechDelta !== null && Math.abs(speechDelta) > 0.02;
     const hasMbiChange = mbiDelta !== null && Math.abs(mbiDelta) > 0.02;
 
@@ -329,7 +326,6 @@ const ReportPage = () => {
       sentences.push('Пока данных слишком мало для сравнения — пройдите ещё несколько сессий, чтобы увидеть динамику.');
     }
 
-    // 3. Эмоциональный фон
     if (dominantEmotionLabel) {
       const emo = dominantEmotionLabel.toLowerCase();
       sentences.push(
@@ -353,7 +349,6 @@ const ReportPage = () => {
       }
     }
 
-    // 4. Усталость и стресс
     if (avgFatigueLevel !== null) {
       if (avgFatigueLevel >= 4) {
         sentences.push(
@@ -501,7 +496,6 @@ const ReportPage = () => {
   return (
     <div className="report-container">
 
-      {/* ── Header ── */}
       <div className="report-header">
         <div>
           <h1 className="report-title">{t('Burnout Assessment Report', 'Отчёт об оценке выгорания')}</h1>
@@ -512,7 +506,6 @@ const ReportPage = () => {
         </button>
       </div>
 
-      {/* ── Cross-validation warning ── */}
       {crossValFailed && (
         <div className="cross-val-warning">
           <span className="warning-icon">⚠</span>
@@ -522,9 +515,6 @@ const ReportPage = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════
-          1. ВЕРДИКТ — был ли прогресс или регресс
-      ═══════════════════════════════════════════════ */}
       {verdictData && (
         <div style={{
           background: ti.bg,
@@ -593,9 +583,6 @@ const ReportPage = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════
-          1b. ТЕКУЩЕЕ СОСТОЯНИЕ — читаемый абзац
-      ═══════════════════════════════════════════════ */}
       {currentStateText && (
         <div style={{
           background: '#fff',
@@ -614,9 +601,6 @@ const ReportPage = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════
-          2. ЦИФРЫ — все показатели из БД
-      ═══════════════════════════════════════════════ */}
       {verdictData && summaryStats && (
         <div style={{ marginBottom: 36 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 16px' }}>
@@ -624,7 +608,6 @@ const ReportPage = () => {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(265px, 1fr))', gap: 16 }}>
 
-            {/* — Речевой анализ — */}
             {historyData.speech_analyses?.length > 0 && (
               <MetricBlock title="Речевой анализ" accent="#8884d8">
                 <MetricRow label="Всего сессий" value={summaryStats.totalSpeech} />
@@ -663,7 +646,6 @@ const ReportPage = () => {
               </MetricBlock>
             )}
 
-            {/* — Тест MBI — */}
             {historyData.mbi_results?.length > 0 && (() => {
               const m = historyData.mbi_results[0];
               const eeColor = m.emotional_exhaustion > 32 ? '#dc2626' : m.emotional_exhaustion > 18 ? '#d97706' : '#16a34a';
@@ -717,7 +699,6 @@ const ReportPage = () => {
               );
             })()}
 
-            {/* — Лингвистика — */}
             {verdictData.avgSentiment !== null && (
               <MetricBlock title="Лингвистические признаки" accent="#ff7300">
                 <MetricRow
@@ -747,7 +728,6 @@ const ReportPage = () => {
               </MetricBlock>
             )}
 
-            {/* — Вклад источников — */}
             {Object.keys(verdictData.avgStreamContributions).length > 0 && (
               <MetricBlock title="Вклад источников в оценку" accent="#e84393">
                 {Object.entries(verdictData.avgStreamContributions)
@@ -783,15 +763,11 @@ const ReportPage = () => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════
-          3. ГРАФИКИ
-      ═══════════════════════════════════════════════ */}
       <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 16px' }}>
         Графики
       </h2>
       <div className="charts-grid">
 
-        {/* 1. Burnout Risk Area Chart */}
         <div className="chart-card chart-card--wide">
           <h2 className="chart-title">{t('Burnout Risk Index Over Time', 'Индекс риска выгорания по неделям')}</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -822,7 +798,6 @@ const ReportPage = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* 2. Linguistic Features */}
         <div className="chart-card chart-card--wide">
           <h2 className="chart-title">{t('Linguistic & Semantic Features', 'Лингвистические и семантические признаки')}</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -839,7 +814,6 @@ const ReportPage = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* 3. Individual Speech Score Trend */}
         {speechTrendData.length > 1 && (
           <div className="chart-card chart-card--wide">
             <h2 className="chart-title">🎙 {t('Individual Speech Analysis Trend', 'Динамика каждого речевого анализа')}</h2>
@@ -857,7 +831,6 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 4. MBI Subscales Bar */}
         {mbiSubScaleData.length > 0 && (
           <div className="chart-card">
             <h2 className="chart-title">{t('MBI Subscale Scores', 'Подшкалы MBI по тестам')}</h2>
@@ -879,7 +852,6 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 5. Emotion Distribution */}
         {emotionData.length > 0 && (
           <div className="chart-card">
             <h2 className="chart-title">{t('Avg. Emotion Distribution', 'Среднее распределение эмоций')}</h2>
@@ -899,7 +871,6 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 6. Risk Level Pie */}
         {riskDistribution.length > 0 && (
           <div className="chart-card">
             <h2 className="chart-title">{t('Risk Level Distribution', 'Распределение уровней риска')}</h2>
@@ -926,7 +897,6 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 7. MBI Radar */}
         {mbiRadarData.length > 0 && (
           <div className="chart-card">
             <h2 className="chart-title">{t('MBI Profile (Latest Test)', 'Профиль MBI (последний тест)')}</h2>
@@ -943,7 +913,6 @@ const ReportPage = () => {
           </div>
         )}
 
-        {/* 8. Weekly Activity */}
         <div className="chart-card">
           <h2 className="chart-title">{t('Weekly Activity', 'Активность по неделям')}</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -962,7 +931,6 @@ const ReportPage = () => {
 
       </div>
 
-      {/* ── Footer ── */}
       <div className="report-footer">
         <p>{t('Generated by Burnout Predictor System', 'Сгенерировано системой Burnout Predictor')}</p>
         <p>{new Date().toLocaleDateString()}</p>

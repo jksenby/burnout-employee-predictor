@@ -8,19 +8,16 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models_db import User
 
-# ── Config ──
 SECRET_KEY = "burnout-predictor-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# ── OAuth2 scheme ──
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 import bcrypt
 
 
 def hash_password(password: str) -> str:
-    # bcrypt requires bytes
     pwd_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')

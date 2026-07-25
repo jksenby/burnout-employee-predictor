@@ -160,7 +160,6 @@ const SpeechAnalysisPage = () => {
         </div>
       ) : (
         <>
-          {/* Mini-instructions */}
           <div style={{
             background: 'rgba(0, 210, 255, 0.05)',
             border: '1px solid rgba(0, 210, 255, 0.25)',

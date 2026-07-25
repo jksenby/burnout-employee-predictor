@@ -44,7 +44,6 @@ class BurnoutMultimodalClassifier:
         self._load_trained_model()
 
     def _load_trained_model(self):
-        """Load pre-trained model from disk if available."""
         if os.path.exists(MODEL_PATH):
             try:
                 self.model = joblib.load(MODEL_PATH)
@@ -56,7 +55,6 @@ class BurnoutMultimodalClassifier:
             print("No trained model found. Run train.py first, or using heuristic fallback.")
 
     def _extract_hubert_stats(self, hubert_embedding: list) -> list:
-        """Compute summary statistics from the 768-dim HuBERT embedding."""
         emb = np.array(hubert_embedding)
         return [
             float(np.linalg.norm(emb)),
