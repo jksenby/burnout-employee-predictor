@@ -168,8 +168,15 @@ class ScheduleResponse(BaseModel):
     speech_days_remaining: int
     mbi_count: int
     speech_count: int
+    # Записи текущей схемы признаков в окне отчёта, по режимам, — ровно то, что
+    # считает допуск к отчёту (см. _report_eligibility).
     interview_count: int = 0
     reading_count: int = 0
+    # Требования допуска отдаются вместе со счётчиками, чтобы интерфейс не
+    # держал их дубликатом в переводах: раньше в i18n было зашито «8 анализов
+    # речи», и после смены правила текст разошёлся бы с поведением кнопки.
+    required_mbi_count: int
+    required_speech_per_mode: int
     can_generate_report: bool
     today_task: Optional[str] = None  # "mbi", "speech", or null
 

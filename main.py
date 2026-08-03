@@ -346,13 +346,15 @@ async def submit_mbi(
 MBI_CYCLE_DAYS = 60
 SPEECH_CYCLE_DAYS = 7
 
-# Окно отчёта должно накрывать ВЕСЬ протокол. Раньше здесь стояло 8 недель
-# (56 дней), а второй MBI приходится на 60-й день — то есть первый MBI
-# выпадал из выборки и динамика по опроснику молча исчезала из отчёта.
-REPORT_WINDOW_DAYS = MBI_CYCLE_DAYS + 30
-
-REQUIRED_MBI_COUNT = 2
-REQUIRED_SPEECH_COUNT = 8
+# Окно отчёта должно накрывать ВЕСЬ протокол и оставаться открытым ПОСЛЕ его
+# конца: отчёт нужен не только в день последней записи. Прежние значения
+# промахивались с двух сторон. 8 недель (56 дней) обрезали второй MBI, который
+# приходится на 60-й день, и динамика по опроснику молча исчезала из отчёта.
+# MBI_CYCLE_DAYS + 30 = 90 дней протокол накрывали, но на 91-й день из окна
+# выпадал ПЕРВЫЙ MBI: mbi_count падал до одного, допуск закрывался, и
+# /report/pdf отдавал 403 по полностью собранному протоколу — то есть отчёт
+# жил всего 30 дней после последнего замера.
+REPORT_WINDOW_DAYS = 365
 
 # Минимум точек, ниже которого говорить о тренде нельзя — только о разнице
 # двух замеров. Две точки всегда дают идеальную прямую, это не тренд.
@@ -363,6 +365,16 @@ MIN_TREND_POINTS = 3
 # получал ярлык «улучшение» только потому, что три шумовые точки легли под
 # небольшим уклоном. Все ряды здесь в шкале 0..1 либо -1..1.
 MIN_TREND_TOTAL_CHANGE = 0.15
+
+REQUIRED_MBI_COUNT = 2
+# Требование к речи задано ПО РЕЖИМУ, а не суммой записей. Личная норма и её
+# тренд считаются внутри режима (см. _attach_baseline), а прежний суммарный
+# порог в 8 записей режимы не различал: набор «4 интервью + 4 чтения» его
+# проходил, хотя в каждом режиме первые три сессии уходят в калибровку и на
+# тренд остаётся одна точка — отчёт открывался без лонгитюдной части вообще.
+# Минимум, при котором тренд в принципе возможен: калибровочные сессии плюс
+# точки, которые нужны МНК.
+REQUIRED_SPEECH_PER_MODE = MIN_BASELINE_SESSIONS + MIN_TREND_POINTS
 
 # Пороги правила «семантика не подтверждает акустический риск».
 CROSS_VAL_RISK_MIN = 0.6
@@ -483,23 +495,48 @@ def _linear_trend(series: list) -> dict:
     }
 
 
-def _report_eligibility(db, user_id: int, now: datetime) -> tuple:
+def _report_eligibility(db, user_id: int, now: datetime) -> dict:
     """Считает записи в ТОМ ЖЕ окне, которое использует /report/data.
 
     Раньше допуск к отчёту считался за всё время, а сам отчёт брал последние
     8 недель — можно было открыть отчёт с пустым окном.
+
+    Речь считается по режимам и только по текущей схеме признаков: записи
+    прежней схемы в личную норму не входят (см. _attach_baseline), поэтому
+    лонгитюдную часть отчёта из них не собрать, и допускать по ним к отчёту
+    нельзя — иначе достаточно старых записей, чтобы открыть отчёт, в котором
+    нет ни одного отклонения от нормы.
     """
     window_start = now - timedelta(days=REPORT_WINDOW_DAYS)
 
     mbi_count = db.query(MBIResult)\
         .filter(MBIResult.user_id == user_id, MBIResult.created_at >= window_start)\
         .count()
-    speech_count = db.query(SpeechAnalysis)\
-        .filter(SpeechAnalysis.user_id == user_id, SpeechAnalysis.created_at >= window_start)\
-        .count()
 
-    can_generate = mbi_count >= REQUIRED_MBI_COUNT and speech_count >= REQUIRED_SPEECH_COUNT
-    return mbi_count, speech_count, can_generate
+    def _mode_count(analysis_type: str) -> int:
+        return db.query(SpeechAnalysis)\
+            .filter(
+                SpeechAnalysis.user_id == user_id,
+                SpeechAnalysis.created_at >= window_start,
+                SpeechAnalysis.analysis_type == analysis_type,
+                SpeechAnalysis.feature_schema == FEATURE_SCHEMA_VERSION,
+            )\
+            .count()
+
+    interview_count = _mode_count("interview")
+    reading_count = _mode_count("reading")
+
+    can_generate = (
+        mbi_count >= REQUIRED_MBI_COUNT
+        and interview_count >= REQUIRED_SPEECH_PER_MODE
+        and reading_count >= REQUIRED_SPEECH_PER_MODE
+    )
+    return {
+        "mbi": mbi_count,
+        "interview": interview_count,
+        "reading": reading_count,
+        "can_generate": can_generate,
+    }
 
 
 @app.get("/interview/questions")
@@ -553,8 +590,6 @@ async def get_schedule(
         .all()
 
     speech_count = len(speech_results)
-    interview_count = sum(1 for s in speech_results if s.analysis_type == "interview")
-    reading_count = sum(1 for s in speech_results if s.analysis_type == "reading")
     last_speech = speech_results[0] if speech_count > 0 else None
 
     mbi_due = False
@@ -590,7 +625,13 @@ async def get_schedule(
         speech_next = now.strftime("%Y-%m-%d")
         speech_last_date = None
 
-    _, _, can_generate_report = _report_eligibility(db, current_user.id, now)
+    # Счётчики для панели прогресса берутся из того же расчёта, что и допуск:
+    # иначе на дашборде можно было увидеть выполненный план при заблокированной
+    # кнопке (счётчики считались за всё время и по всем схемам признаков).
+    eligibility = _report_eligibility(db, current_user.id, now)
+    interview_count = eligibility["interview"]
+    reading_count = eligibility["reading"]
+    can_generate_report = eligibility["can_generate"]
 
     today_task = None
     if mbi_due:
@@ -611,6 +652,8 @@ async def get_schedule(
         speech_count=speech_count,
         interview_count=interview_count,
         reading_count=reading_count,
+        required_mbi_count=REQUIRED_MBI_COUNT,
+        required_speech_per_mode=REQUIRED_SPEECH_PER_MODE,
         can_generate_report=can_generate_report,
         today_task=today_task
     )
@@ -806,16 +849,18 @@ async def generate_pdf_report(
     current_user: User = Depends(get_current_user)
 ):
     now = datetime.now(timezone.utc)
-    mbi_count, speech_count, can_generate = _report_eligibility(db, current_user.id, now)
+    eligibility = _report_eligibility(db, current_user.id, now)
 
-    if not can_generate:
+    if not eligibility["can_generate"]:
         raise HTTPException(
             status_code=403,
             detail=(
-                f"Requirements not met: {REQUIRED_MBI_COUNT} MBI and "
-                f"{REQUIRED_SPEECH_COUNT} speech analyses required within the "
-                f"last {REPORT_WINDOW_DAYS} days "
-                f"(have {mbi_count} and {speech_count})."
+                f"Requirements not met: {REQUIRED_MBI_COUNT} MBI questionnaires "
+                f"and {REQUIRED_SPEECH_PER_MODE} recordings in EACH speech mode "
+                f"required within the last {REPORT_WINDOW_DAYS} days "
+                f"(have {eligibility['mbi']} MBI, "
+                f"{eligibility['interview']} interview, "
+                f"{eligibility['reading']} reading)."
             ),
         )
 

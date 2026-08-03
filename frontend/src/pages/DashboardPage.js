@@ -64,6 +64,11 @@ const DashboardPage = () => {
     ? Math.min(100, ((7 - schedule.speech_days_remaining) / 7) * 100)
     : 0;
 
+  // Требования допуска приходят с бэкенда (/schedule): дублировать их в
+  // переводах нельзя — текст разошёлся бы с поведением кнопки при смене правила.
+  const requiredMbi = schedule.required_mbi_count ?? 2;
+  const requiredPerMode = schedule.required_speech_per_mode ?? 6;
+
   return (
     <>
       <div className="page-header">
@@ -288,35 +293,51 @@ const DashboardPage = () => {
             <h3 className="dash-report-title">{t("dashboard.report_status")}</h3>
             <p className="dash-report-desc">
               {schedule.can_generate_report 
-                ? t("dashboard.report_desc_ready") 
-                : t("dashboard.report_desc_locked")}
+                ? t("dashboard.report_desc_ready")
+                : t("dashboard.report_desc_locked", {
+                    mbi: requiredMbi,
+                    perMode: requiredPerMode,
+                  })}
             </p>
           </div>
         </div>
 
         <div className="dash-report-progress">
           <div className="dash-report-stat">
-            <span>{t("dashboard.mbi_progress", { count: schedule.mbi_count })}</span>
-            <div className="dash-mini-progress">
-              <div 
-                className="dash-mini-fill mbi" 
-                style={{ width: `${Math.min(100, (schedule.mbi_count / 2) * 100)}%` }}
-              ></div>
-            </div>
-          </div>
-          <div className="dash-report-stat">
-            <span>{t("dashboard.speech_progress", { count: schedule.speech_count })}</span>
+            <span>
+              {t("dashboard.mbi_progress", {
+                count: schedule.mbi_count,
+                required: requiredMbi,
+              })}
+            </span>
             <div className="dash-mini-progress">
               <div
-                className="dash-mini-fill speech"
-                style={{ width: `${Math.min(100, (schedule.speech_count / 8) * 100)}%` }}
+                className="dash-mini-fill mbi"
+                style={{ width: `${Math.min(100, (schedule.mbi_count / requiredMbi) * 100)}%` }}
               ></div>
             </div>
-            <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "#666", marginTop: "4px" }}>
-              <span>🎙 {t("dashboard.interviews", "Интервью")}: {schedule.interview_count ?? 0}</span>
-              <span>📖 {t("dashboard.readings", "Чтений")}: {schedule.reading_count ?? 0}</span>
-            </div>
           </div>
+          {/* Прогресс показывается ПО РЕЖИМАМ, а не суммой записей: допуск к
+              отчёту требует набора в каждом режиме отдельно, потому что личная
+              норма голоса и её тренд считаются внутри режима. Общий счётчик
+              вводил в заблуждение — он мог показать план выполненным, пока в
+              одном из режимов записей не хватало. */}
+          {[
+            { key: "interview", label: t("dashboard.interviews", "Интервью"), icon: "🎙", count: schedule.interview_count ?? 0 },
+            { key: "reading", label: t("dashboard.readings", "Чтений"), icon: "📖", count: schedule.reading_count ?? 0 },
+          ].map(({ key, label, icon, count }) => (
+            <div className="dash-report-stat" key={key}>
+              <span>
+                {icon} {label}: {count}/{requiredPerMode}
+              </span>
+              <div className="dash-mini-progress">
+                <div
+                  className="dash-mini-fill speech"
+                  style={{ width: `${Math.min(100, (count / requiredPerMode) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
         </div>
 
         <button 
