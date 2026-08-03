@@ -178,17 +178,17 @@ const HistoryPage = () => {
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>{t("history.exhaustion")}</div>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)' }}>{rec.emotional_exhaustion}</div>
-                        <div style={{ fontSize: '9px', color: '#888' }}>max 54</div>
+                        <div style={{ fontSize: '9px', color: '#888' }}>max 36</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>{t("history.depersonalization")}</div>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)' }}>{rec.depersonalization}</div>
-                        <div style={{ fontSize: '9px', color: '#888' }}>max 30</div>
+                        <div style={{ fontSize: '9px', color: '#888' }}>max 20</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>{t("history.reduction")}</div>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-main)' }}>{rec.reduction_of_achievements}</div>
-                        <div style={{ fontSize: '9px', color: '#888' }}>max 48</div>
+                        <div style={{ fontSize: '9px', color: '#888' }}>max 32</div>
                       </div>
                     </div>
                   </div>

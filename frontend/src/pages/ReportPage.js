@@ -1,12 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  AreaChart, Area,
+  AreaChart, Area, ReferenceLine,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { normalizeRiskLabel } from '../helpers/formatters';
 import './ReportPage.css';
 
 const PALETTE = ['#8884d8', '#82ca9d', '#ff7300', '#e84393', '#00C49F', '#FFBB28', '#FF8042'];
@@ -19,6 +20,26 @@ const EMOTION_LABELS = {
   fear: 'Страх', anxious: 'Тревога', anxiety: 'Тревога',
   surprise: 'Удивление', disgust: 'Отвращение', neutral: 'Нейтральность',
 };
+
+// Ползунок самооценки усталости в SpeechAnalysisPage.js задан как min=1 max=10.
+// Отчёт раньше трактовал его как шкалу 1–5: писал «4.0 из 5» и на значении 4
+// выдавал «это высокий показатель», то есть 4 из 10 — низкую усталость —
+// описывал как высокую. Пороги ниже согласованы с раскраской в HistoryTable.
+const FATIGUE_SCALE_MAX = 10;
+const FATIGUE_HIGH = 7;
+const FATIGUE_MODERATE = 5;
+
+const plural = (n, one, few, many) => {
+  const mod100 = n % 100;
+  const mod10 = n % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+};
+
+const pluralSessions = (n) => plural(n, 'сессию', 'сессии', 'сессий');
+const pluralWeeks = (n) => plural(n, 'неделя', 'недели', 'недель');
 
 const getRiskColor = (score) => {
   if (score === null || score === undefined) return '#aaa';
@@ -74,10 +95,23 @@ const Divider = () => (
 );
 
 const ReportPage = () => {
-  const { t } = useTranslation();
+  // This page is authored with inline (English, Russian) string pairs rather
+  // than i18next resource keys. i18next's t() would treat the 2nd arg as a
+  // defaultValue and, since these keys don't exist, always return Russian —
+  // so we use a small language-aware picker instead. (No Kazakh strings exist
+  // on this page yet; kk falls back to English.)
+  // useCallback обязателен: без него t пересоздаётся на каждом рендере, а он
+  // входит в зависимости useMemo ниже — те пересчитывались бы всегда заново.
+  const { i18n } = useTranslation();
+  const t = useCallback(
+    (en, ru) => (i18n.language && i18n.language.startsWith('ru') ? ru : en),
+    [i18n.language]
+  );
   const { token } = useAuth();
   const [reportData, setReportData] = useState([]);
   const [historyData, setHistoryData] = useState(null);
+  const [trends, setTrends] = useState({});
+  const [baselineInfo, setBaselineInfo] = useState({});
   const [crossValMessage, setCrossValMessage] = useState(null);
   const [crossValFailed, setCrossValFailed] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -103,6 +137,8 @@ const ReportPage = () => {
           speech_score: item.speech_score !== null ? parseFloat(item.speech_score.toFixed(3)) : null,
           interview_score: item.interview_score !== null ? parseFloat((item.interview_score ?? 0).toFixed(3)) : null,
           reading_score: item.reading_score !== null ? parseFloat((item.reading_score ?? 0).toFixed(3)) : null,
+          interview_deviation: item.interview_deviation != null ? parseFloat(item.interview_deviation.toFixed(3)) : null,
+          reading_deviation: item.reading_deviation != null ? parseFloat(item.reading_deviation.toFixed(3)) : null,
           absolutist_index: item.absolutist_index !== null ? parseFloat(item.absolutist_index.toFixed(3)) : null,
           negative_word_ratio: item.negative_word_ratio !== null ? parseFloat(item.negative_word_ratio.toFixed(3)) : null,
           sentiment_polarity: item.sentiment_polarity !== null ? parseFloat(item.sentiment_polarity.toFixed(3)) : null,
@@ -113,6 +149,8 @@ const ReportPage = () => {
         }));
 
         setReportData(formattedData);
+        setTrends(reportJson.trends || {});
+        setBaselineInfo(reportJson.baseline || {});
         setCrossValFailed(reportJson.cross_validation_failed);
         setCrossValMessage(reportJson.cross_validation_message);
         setHistoryData(historyJson);
@@ -131,45 +169,80 @@ const ReportPage = () => {
     if (!historyData) return null;
     const speeches = historyData.speech_analyses || [];
     const mbis = historyData.mbi_results || [];
+    const interviews = speeches.filter(s => s.analysis_type === 'interview');
+    const readings = speeches.filter(s => s.analysis_type === 'reading');
 
-    const avgSpeech = speeches.length > 0
-      ? speeches.reduce((s, a) => s + a.score, 0) / speeches.length
+    const avgScore = (arr) => arr.length > 0
+      ? arr.reduce((s, a) => s + a.score, 0) / arr.length
       : null;
-    const latestMbi = mbis.length > 0 ? mbis[0].burnout_index : null;
 
-    const valid = reportData.filter(d => d.speech_score !== null);
-    let trend = 'stable';
-    if (valid.length >= 4) {
-      const mid = Math.floor(valid.length / 2);
-      const firstAvg = valid.slice(0, mid).reduce((s, d) => s + d.speech_score, 0) / mid;
-      const secondAvg = valid.slice(mid).reduce((s, d) => s + d.speech_score, 0) / (valid.length - mid);
-      if (secondAvg - firstAvg > 0.05) trend = 'worsening';
-      else if (firstAvg - secondAvg > 0.05) trend = 'improving';
-    }
+    return {
+      totalSpeech: speeches.length,
+      totalInterview: interviews.length,
+      totalReading: readings.length,
+      totalMbi: mbis.length,
+      avgSpeech: avgScore(speeches),
+      avgInterview: avgScore(interviews),
+      avgReading: avgScore(readings),
+      latestMbi: mbis.length > 0 ? mbis[0].burnout_index : null,
+    };
+  }, [historyData]);
 
-    return { totalSpeech: speeches.length, totalMbi: mbis.length, avgSpeech, latestMbi, trend };
-  }, [historyData, reportData]);
+  // Главный лонгитюдный сигнал — тренд отклонения от ЛИЧНОЙ нормы. Абсолютный
+  // score для динамики не годится: он несопоставим между людьми, а его разброс
+  // между записями определяется в основном условиями записи (микрофон, комната,
+  // время суток), а не состоянием человека. Тренд считает бэкенд по МНК и не
+  // отдаёт направление, пока точек меньше трёх.
+  const primaryTrend = useMemo(() => {
+    const candidates = [
+      { key: 'interview_deviation', modality: 'интервью', trend: trends.interview_deviation },
+      { key: 'reading_deviation', modality: 'чтению текста', trend: trends.reading_deviation },
+    ].filter(c => c.trend && c.trend.direction !== 'insufficient');
+
+    if (candidates.length === 0) return null;
+    return candidates.sort((a, b) => b.trend.n_points - a.trend.n_points)[0];
+  }, [trends]);
 
   const verdictData = useMemo(() => {
     if (!historyData) return null;
     const speeches = historyData.speech_analyses || [];
     const mbis = historyData.mbi_results || [];
 
-    const newestSpeech = speeches[0] || null;
-    const oldestSpeech = speeches.length > 1 ? speeches[speeches.length - 1] : null;
-    const speechDelta = oldestSpeech && newestSpeech ? newestSpeech.score - oldestSpeech.score : null;
-    const speechTrend = speechDelta === null ? 'stable'
-      : speechDelta > 0.05 ? 'worsening' : speechDelta < -0.05 ? 'improving' : 'stable';
+    // Разница «первая → последняя» считается ВНУТРИ одного режима: раньше в
+    // одну пару попадали интервью и чтение, и разница могла целиком
+    // объясняться тем, что записи сделаны в разных условиях.
+    const interviews = speeches.filter(s => s.analysis_type === 'interview');
+    const readings = speeches.filter(s => s.analysis_type === 'reading');
+    const modality = interviews.length > 1 ? interviews : readings;
+    const modalityLabel = modality === interviews ? 'интервью' : 'чтению текста';
+
+    const newestSpeech = modality[0] || speeches[0] || null;
+    const oldestSpeech = modality.length > 1 ? modality[modality.length - 1] : null;
+    const speechDelta = oldestSpeech && newestSpeech
+      ? newestSpeech.score - oldestSpeech.score : null;
 
     const newestMbi = mbis[0] || null;
     const oldestMbi = mbis.length > 1 ? mbis[mbis.length - 1] : null;
-    const mbiDelta = oldestMbi && newestMbi ? newestMbi.burnout_index - oldestMbi.burnout_index : null;
-    const mbiTrend = mbiDelta === null ? 'stable'
-      : mbiDelta > 0.05 ? 'worsening' : mbiDelta < -0.05 ? 'improving' : 'stable';
+    const mbiDelta = oldestMbi && newestMbi
+      ? newestMbi.burnout_index - oldestMbi.burnout_index : null;
 
-    let overallTrend = 'stable';
-    if (speechTrend === 'worsening' || mbiTrend === 'worsening') overallTrend = 'worsening';
-    else if (speechTrend === 'improving' || mbiTrend === 'improving') overallTrend = 'improving';
+    // Направления берём из трендов бэкенда (МНК, минимум 3 точки), а не из
+    // порога 0.05 на разнице двух замеров — тот порог срабатывал на обычном
+    // измерительном шуме.
+    const scoreTrendKey = modality === interviews ? 'interview_score' : 'reading_score';
+    const speechTrend = trends[scoreTrendKey]?.direction || 'insufficient';
+    const mbiTrend = trends.mbi_score?.direction || 'insufficient';
+    const deviationTrend = primaryTrend?.trend?.direction || 'insufficient';
+
+    // Приоритет у отклонения от личной нормы: это единственный ряд, который
+    // сопоставим во времени для одного человека.
+    let overallTrend = deviationTrend;
+    if (overallTrend === 'insufficient') {
+      const fallbacks = [speechTrend, mbiTrend].filter(x => x !== 'insufficient');
+      if (fallbacks.includes('worsening')) overallTrend = 'worsening';
+      else if (fallbacks.includes('improving')) overallTrend = 'improving';
+      else if (fallbacks.length > 0) overallTrend = 'stable';
+    }
 
     const withText = speeches.filter(s => s.text_analysis);
     const avg = (arr, fn) => arr.length > 0 ? arr.reduce((s, x) => s + (fn(x) || 0), 0) / arr.length : null;
@@ -185,8 +258,13 @@ const ReportPage = () => {
     const dominantEmotion = topEmotion?.[0] || null;
     const dominantEmotionLabel = dominantEmotion ? (EMOTION_LABELS[dominantEmotion] || dominantEmotion) : null;
 
+    // normalizeRiskLabel обязателен: модель отдаёт "Medium Risk", а ключ здесь
+    // всегда был "Moderate Risk" — счётчик умеренного риска показывал 0.
     const riskCounts = { 'Low Risk': 0, 'Moderate Risk': 0, 'High Risk': 0 };
-    speeches.forEach(s => { if (s.label) riskCounts[s.label] = (riskCounts[s.label] || 0) + 1; });
+    speeches.forEach(s => {
+      const risk = normalizeRiskLabel(s.label);
+      if (risk) riskCounts[risk] = (riskCounts[risk] || 0) + 1;
+    });
 
     const withFatigue = speeches.filter(s => s.fatigue_level !== null && s.fatigue_level !== undefined);
     const avgFatigueLevel = withFatigue.length > 0
@@ -203,30 +281,57 @@ const ReportPage = () => {
         avgStreamContributions[key] = vals.reduce((s, a) => s + a.stream_contributions[key], 0) / vals.length;
     });
 
-    const spPct = speechDelta !== null ? Math.abs(speechDelta * 100).toFixed(1) : null;
     const mbPct = mbiDelta !== null ? Math.abs(mbiDelta * 100).toFixed(1) : null;
 
+    const modalityBaseline = baselineInfo[modality === interviews ? 'interview' : 'reading'];
+
     let narrative;
-    if (speeches.length < 2 && mbis.length < 2) {
-      narrative = 'Недостаточно данных для анализа динамики. Пройдите больше сессий, чтобы система могла отследить изменения.';
-    } else if (overallTrend === 'improving') {
-      if (speechTrend === 'improving' && mbiTrend === 'improving') {
-        narrative = `За период наблюдения отмечается устойчивая положительная динамика. Акустический риск снизился на ${spPct}%, индекс MBI уменьшился на ${mbPct}%.`;
-      } else if (speechTrend === 'improving') {
-        narrative = `Акустические показатели улучшились: риск снизился на ${spPct}% относительно первой записи.${mbiDelta !== null ? ' Показатели MBI остаются стабильными.' : ''}`;
+    if (overallTrend === 'insufficient') {
+      // Раньше в этой ветке выводилось «показатели стабильны» — то есть
+      // отсутствие данных выглядело как подтверждённая норма.
+      const need = modalityBaseline?.sessions_until_ready || 0;
+      narrative = 'Данных пока недостаточно, чтобы говорить о динамике: для оценки тренда нужно минимум три недели с записями'
+        + (need > 0
+          ? `, а личная норма голоса наберётся ещё через ${need} ${pluralSessions(need)}`
+          : '')
+        + '. Оценки ниже описывают только текущий снимок, а не изменение.';
+    } else if (deviationTrend !== 'insufficient') {
+      const slopePts = Math.abs(primaryTrend.trend.slope * 100).toFixed(1);
+      const weeks = primaryTrend.trend.n_points;
+      const source = `по ${primaryTrend.modality}, ${weeks} ${pluralWeeks(weeks)} с данными`;
+
+      if (deviationTrend === 'worsening') {
+        narrative = `За период наблюдения голос всё сильнее отходит от вашей собственной нормы: отклонение растёт в среднем на ${slopePts} пункта в неделю (${source}). Речь сравнивается с тем, как вы звучали в начале наблюдения, а не со «средним человеком».`;
+      } else if (deviationTrend === 'improving') {
+        narrative = `За период наблюдения речь возвращается к вашей собственной норме: отклонение снижается в среднем на ${slopePts} пункта в неделю (${source}).`;
       } else {
-        narrative = `Индекс выгорания по MBI снизился на ${mbPct}%.${speechDelta !== null ? ' Акустические показатели остаются стабильными.' : ''}`;
+        narrative = `Речь держится в пределах вашей собственной нормы — устойчивого сдвига за период наблюдения нет (${source}).`;
       }
-    } else if (overallTrend === 'worsening') {
-      if (speechTrend === 'worsening' && mbiTrend === 'worsening') {
-        narrative = `За период наблюдения риск выгорания вырос по обоим источникам. Акустический риск увеличился на ${spPct}%, индекс MBI вырос на ${mbPct}%. Рекомендуется обратиться к специалисту.`;
-      } else if (speechTrend === 'worsening') {
-        narrative = `Акустический риск вырос на ${spPct}% относительно первой записи.${mbiDelta !== null ? ' Показатели MBI в норме.' : ''} Рекомендуется следить за динамикой.`;
-      } else {
-        narrative = `Индекс выгорания по MBI вырос на ${mbPct}%.${speechDelta !== null ? ' Акустические показатели стабильны.' : ''} Рекомендуется пройти дополнительную оценку.`;
+
+      if (mbiTrend === 'worsening') {
+        narrative += ` Опросник MBI показывает то же направление: индекс вырос на ${mbPct} п.п.`;
+      } else if (mbiTrend === 'improving') {
+        narrative += ` Опросник MBI показывает улучшение: индекс снизился на ${mbPct} п.п.`;
+      } else if (mbPct !== null) {
+        narrative += ` Индекс MBI изменился на ${mbPct} п.п. между первым и последним тестом — двух точек мало для тренда, это просто разница двух замеров.`;
       }
     } else {
-      narrative = `Показатели остаются стабильными на протяжении всего периода наблюдения.${speeches.length > 1 || mbis.length > 1 ? ' Значительных изменений не выявлено.' : ''}`;
+      // Личной нормы ещё нет, но по абсолютным оценкам тренд уже считается.
+      // Формулировки здесь осторожнее: абсолютный score чувствителен к условиям
+      // записи, поэтому он показывает направление, но не величину эффекта.
+      const parts = [];
+      if (speechTrend === 'worsening') parts.push(`акустическая оценка по ${modalityLabel} растёт`);
+      else if (speechTrend === 'improving') parts.push(`акустическая оценка по ${modalityLabel} снижается`);
+      if (mbiTrend === 'worsening') parts.push('индекс MBI растёт');
+      else if (mbiTrend === 'improving') parts.push('индекс MBI снижается');
+
+      narrative = parts.length > 0
+        ? `За период наблюдения ${parts.join(', ')}. Личная норма голоса ещё не набрана, поэтому направление опирается на абсолютные оценки — они чувствительны к условиям записи, и величину изменения по ним оценивать нельзя.`
+        : 'Устойчивого изменения за период наблюдения не видно.';
+
+      if (overallTrend === 'worsening') {
+        narrative += ' Стоит следить за динамикой.';
+      }
     }
 
     if (avgSentiment !== null && avgSentiment < -0.3) {
@@ -234,21 +339,22 @@ const ReportPage = () => {
     }
 
     return {
-      overallTrend, speechTrend, mbiTrend,
+      overallTrend, speechTrend, mbiTrend, deviationTrend,
       speechDelta, mbiDelta,
+      modalityLabel, modalityBaseline,
       newestSpeech, oldestSpeech, newestMbi, oldestMbi,
       avgSentiment, avgAbsolutist, avgNegRatio,
       dominantEmotion, dominantEmotionLabel,
       riskCounts, narrative,
       avgFatigueLevel, stressEventsCount, avgStreamContributions,
     };
-  }, [historyData]);
+  }, [historyData, trends, primaryTrend, baselineInfo]);
 
   const currentStateText = useMemo(() => {
     if (!verdictData || !summaryStats) return null;
     const {
       newestSpeech, newestMbi, oldestSpeech, oldestMbi,
-      speechDelta, mbiDelta,
+      speechDelta, mbiDelta, modalityBaseline, modalityLabel,
       avgSentiment, dominantEmotionLabel, avgFatigueLevel, stressEventsCount,
     } = verdictData;
 
@@ -275,6 +381,37 @@ const ReportPage = () => {
           `В речи не обнаружено выраженных признаков усталости или эмоционального истощения.`
         );
       }
+    }
+
+    // Отклонение от личной нормы описывается отдельно от абсолютной оценки:
+    // это разные величины, и путать их нельзя — первая говорит «изменилось
+    // относительно вас самих», вторая «похоже на профиль риска в модели».
+    if (modalityBaseline?.status === 'active' && modalityBaseline.latest_deviation != null) {
+      const dev = modalityBaseline.latest_deviation;
+      const devPts = Math.abs(dev * 100).toFixed(0);
+      if (dev > 0.2) {
+        sentences.push(
+          `Если сравнивать не с другими людьми, а с вашей же обычной манерой говорить, ` +
+          `последняя запись отклоняется на ${devPts} пункта в сторону монотонности и ` +
+          `утомления (по ${modalityLabel}, норма снята по ${modalityBaseline.sessions} записям).`
+        );
+      } else if (dev < -0.2) {
+        sentences.push(
+          `Относительно вашей собственной обычной манеры говорить последняя запись ` +
+          `звучит живее на ${devPts} пункта (по ${modalityLabel}).`
+        );
+      } else {
+        sentences.push(
+          `Относительно вашей собственной нормы речь в последней записи не изменилась — ` +
+          `отклонение ${devPts} пункта, это в пределах обычного разброса (по ${modalityLabel}).`
+        );
+      }
+    } else if (modalityBaseline?.status === 'calibrating') {
+      sentences.push(
+        `Личная норма голоса ещё набирается: нужно ещё ` +
+        `${modalityBaseline.sessions_until_ready} ${pluralSessions(modalityBaseline.sessions_until_ready)}, ` +
+        `после этого система сможет сравнивать вас с вами, а не со средним профилем.`
+      );
     }
 
     if (latestMbiRisk !== null) {
@@ -350,31 +487,37 @@ const ReportPage = () => {
     }
 
     if (avgFatigueLevel !== null) {
-      if (avgFatigueLevel >= 4) {
+      const level = `${avgFatigueLevel.toFixed(1)} из ${FATIGUE_SCALE_MAX}`;
+      if (avgFatigueLevel >= FATIGUE_HIGH) {
         sentences.push(
-          `Средний уровень усталости по записям — ${avgFatigueLevel.toFixed(1)} из 5. ` +
+          `Средний уровень усталости по вашей самооценке — ${level}. ` +
           'Это высокий показатель: похоже, вы регулярно приходите на сессии уже довольно уставшим.'
         );
-      } else if (avgFatigueLevel >= 3) {
+      } else if (avgFatigueLevel >= FATIGUE_MODERATE) {
         sentences.push(
-          `Средний уровень усталости — ${avgFatigueLevel.toFixed(1)} из 5. ` +
+          `Средний уровень усталости по вашей самооценке — ${level}. ` +
           'Умеренно высоко — стоит следить за режимом отдыха.'
         );
       } else {
-        sentences.push(`Уровень усталости в среднем невысокий (${avgFatigueLevel.toFixed(1)} из 5).`);
+        sentences.push(`Усталость по вашей самооценке в среднем невысокая (${level}).`);
       }
     }
 
+    // stress_events — галочка «были стрессовые события», которую пользователь
+    // ставит сам в форме загрузки. Раньше здесь было написано «система
+    // зафиксировала стрессовые паттерны в речи»: самоотчёт выдавался за
+    // результат анализа, хотя ничего в речи по этому поводу не измеряется.
     if (stressEventsCount > 0 && summaryStats.totalSpeech > 0) {
       const ratio = stressEventsCount / summaryStats.totalSpeech;
       if (ratio > 0.5) {
         sentences.push(
-          `В ${stressEventsCount} из ${summaryStats.totalSpeech} сессий система зафиксировала стрессовые паттерны в речи — ` +
+          `В ${stressEventsCount} из ${summaryStats.totalSpeech} сессий вы сами отметили, что были стрессовые события — ` +
           'это больше половины всех записей.'
         );
-      } else if (stressEventsCount > 0) {
+      } else {
         sentences.push(
-          `В ${stressEventsCount} ${stressEventsCount === 1 ? 'сессии' : 'сессиях'} из ${summaryStats.totalSpeech} были замечены признаки стресса в речи.`
+          `В ${stressEventsCount} ${stressEventsCount === 1 ? 'сессии' : 'сессиях'} из ` +
+          `${summaryStats.totalSpeech} вы отметили стрессовые события.`
         );
       }
     }
@@ -399,7 +542,10 @@ const ReportPage = () => {
     if (!historyData) return [];
     const counts = {};
     (historyData.speech_analyses || []).forEach(s => {
-      counts[s.label] = (counts[s.label] || 0) + 1;
+      // Без нормализации "Medium Risk" не находил себя в RISK_COLORS и сектор
+      // получал случайный цвет из общей палитры.
+      const risk = normalizeRiskLabel(s.label);
+      counts[risk] = (counts[risk] || 0) + 1;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [historyData]);
@@ -418,7 +564,7 @@ const ReportPage = () => {
     });
     return Object.entries(totals)
       .map(([emotion, total]) => ({
-        emotion: emotion.charAt(0).toUpperCase() + emotion.slice(1),
+        emotion: EMOTION_LABELS[emotion.toLowerCase()] || (emotion.charAt(0).toUpperCase() + emotion.slice(1)),
         avg: parseFloat((total / counts[emotion]).toFixed(3)),
       }))
       .sort((a, b) => b.avg - a.avg);
@@ -428,9 +574,11 @@ const ReportPage = () => {
     if (!historyData?.mbi_results?.length) return [];
     const latest = historyData.mbi_results[0];
     return [
-      { subject: t('Emot. Exhaustion', 'Эм. истощение'), value: parseFloat(((latest.emotional_exhaustion / 54) * 100).toFixed(1)) },
-      { subject: t('Depersonaliz.', 'Деперсонализ.'), value: parseFloat(((latest.depersonalization / 30) * 100).toFixed(1)) },
-      { subject: t('Personal Accomp.', 'Личн. достижения'), value: parseFloat(((latest.personal_accomplishment / 48) * 100).toFixed(1)) },
+      // MBI uses a 0–4 answer scale, so subscale maxima are: EE 9×4=36,
+      // DP 5×4=20, PA 8×4=32, Reduction (32−PA) 0..32.
+      { subject: t('Emot. Exhaustion', 'Эм. истощение'), value: parseFloat(((latest.emotional_exhaustion / 36) * 100).toFixed(1)) },
+      { subject: t('Depersonaliz.', 'Деперсонализ.'), value: parseFloat(((latest.depersonalization / 20) * 100).toFixed(1)) },
+      { subject: t('Personal Accomp.', 'Личн. достижения'), value: parseFloat(((latest.personal_accomplishment / 32) * 100).toFixed(1)) },
       { subject: t('Reduction', 'Редукция'), value: parseFloat(((latest.reduction_of_achievements / 32) * 100).toFixed(1)) },
     ];
   }, [historyData, t]);
@@ -485,13 +633,16 @@ const ReportPage = () => {
   }
 
   const trendInfo = {
-    improving: { icon: '↓', label: 'Улучшение', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
-    worsening: { icon: '↑', label: 'Ухудшение', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-    stable:    { icon: '→', label: 'Стабильно',  color: '#d97706', bg: '#fffbeb', border: '#fcd34d' },
+    improving:    { icon: '↓', label: 'Улучшение',        color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+    worsening:    { icon: '↑', label: 'Ухудшение',        color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+    stable:       { icon: '→', label: 'Стабильно',        color: '#d97706', bg: '#fffbeb', border: '#fcd34d' },
+    // Отдельное состояние: раньше нехватка данных сваливалась в «Стабильно»,
+    // то есть отсутствие измерений выглядело как подтверждённая норма.
+    insufficient: { icon: '?', label: 'Данных мало',      color: '#6b7280', bg: '#f9fafb', border: '#d1d5db' },
   };
 
-  const overallTrend = verdictData?.overallTrend || summaryStats?.trend || 'stable';
-  const ti = trendInfo[overallTrend];
+  const overallTrend = verdictData?.overallTrend || 'insufficient';
+  const ti = trendInfo[overallTrend] || trendInfo.insufficient;
 
   return (
     <div className="report-container">
@@ -540,30 +691,47 @@ const ReportPage = () => {
               {verdictData.narrative}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {verdictData.speechDelta !== null && (
+              {/* Тренд по личной норме — единственный ряд, сопоставимый во
+                  времени. Остальные плашки подписаны как разница двух замеров,
+                  чтобы их не читали как измеренное изменение. */}
+              {primaryTrend && (
                 <span style={{
                   background: 'rgba(255,255,255,0.85)',
-                  border: `1px solid ${trendInfo[verdictData.speechTrend].border}`,
+                  border: `1px solid ${trendInfo[verdictData.deviationTrend].border}`,
                   borderRadius: 20,
                   padding: '3px 12px',
                   fontSize: 13,
-                  color: trendInfo[verdictData.speechTrend].color,
+                  color: trendInfo[verdictData.deviationTrend].color,
                   fontWeight: 600,
                 }}>
-                  Речь: {verdictData.speechDelta > 0 ? '+' : ''}{(verdictData.speechDelta * 100).toFixed(1)}%
+                  Личная норма: {primaryTrend.trend.slope > 0 ? '+' : ''}
+                  {(primaryTrend.trend.slope * 100).toFixed(1)} п./нед
+                </span>
+              )}
+              {verdictData.speechDelta !== null && (
+                <span style={{
+                  background: 'rgba(255,255,255,0.85)',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 20,
+                  padding: '3px 12px',
+                  fontSize: 13,
+                  color: '#6b7280',
+                }}>
+                  Речь, 1-я → посл.: {verdictData.speechDelta > 0 ? '+' : ''}
+                  {(verdictData.speechDelta * 100).toFixed(1)} п.п.
                 </span>
               )}
               {verdictData.mbiDelta !== null && (
                 <span style={{
                   background: 'rgba(255,255,255,0.85)',
-                  border: `1px solid ${trendInfo[verdictData.mbiTrend].border}`,
+                  border: '1px solid #e5e7eb',
                   borderRadius: 20,
                   padding: '3px 12px',
                   fontSize: 13,
-                  color: trendInfo[verdictData.mbiTrend].color,
-                  fontWeight: 600,
+                  color: '#6b7280',
                 }}>
-                  MBI: {verdictData.mbiDelta > 0 ? '+' : ''}{(verdictData.mbiDelta * 100).toFixed(1)}%
+                  MBI, 1-й → посл.: {verdictData.mbiDelta > 0 ? '+' : ''}
+                  {(verdictData.mbiDelta * 100).toFixed(1)} п.п.
                 </span>
               )}
               {verdictData.dominantEmotionLabel && (
@@ -601,6 +769,103 @@ const ReportPage = () => {
         </div>
       )}
 
+      {[['interview', 'Интервью'], ['reading', 'Чтение текста']]
+        .some(([key]) => baselineInfo[key] && baselineInfo[key].status !== 'no_data') && (
+        <div style={{ marginBottom: 36 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 6px' }}>
+            Личная норма голоса
+          </h2>
+          <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+            Абсолютные акустические показатели сильнее зависят от пола, возраста и
+            микрофона, чем от состояния, поэтому динамика считается относительно
+            вашей собственной нормы, снятой в начале наблюдения. Режимы
+            калибруются раздельно: в чтении текст задан заранее, и просодия там
+            другая.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(265px, 1fr))', gap: 16 }}>
+            {[['interview', 'Интервью', '#8884d8'], ['reading', 'Чтение текста', '#00d2ff']].map(([key, title, accent]) => {
+              const b = baselineInfo[key];
+              if (!b || b.status === 'no_data') return null;
+
+              const devColor = (v) => v == null ? '#6b7280'
+                : v > 0.2 ? '#dc2626' : v < -0.2 ? '#16a34a' : '#d97706';
+
+              return (
+                <MetricBlock key={key} title={`Личная норма · ${title}`} accent={accent}>
+                  {/* 'unavailable' — сессий хватает, но калибровочные записи
+                      вырожденные (см. MIN_BASELINE_FEATURES в analysis.py).
+                      Отдельная ветка обязательна: без неё этот статус попадал в
+                      ветку «Норма набрана» и рисовал отклонение «+0» из null. */}
+                  {b.status === 'unavailable' ? (
+                    <>
+                      <MetricRow label="Состояние" value="Норму снять не удалось" color="#dc2626" />
+                      <MetricRow label="Записей снято" value={b.sessions} />
+                      <MetricRow
+                        label="Причина"
+                        value="мало пригодных признаков"
+                        note="в калибровочных записях не удалось надёжно измерить просодию; новые сессии сами по себе это не исправят"
+                        color="#6b7280"
+                      />
+                      {b.legacy_sessions > 0 && (
+                        <MetricRow
+                          label="Не вошло в норму"
+                          value={`${b.legacy_sessions} ${pluralSessions(b.legacy_sessions)}`}
+                          note="прежний способ расчёта признаков"
+                          color="#6b7280"
+                        />
+                      )}
+                    </>
+                  ) : b.status === 'calibrating' ? (
+                    <>
+                      <MetricRow label="Состояние" value="Калибровка" color="#6b7280" />
+                      <MetricRow label="Записей снято" value={b.sessions} />
+                      <MetricRow
+                        label="Осталось до оценки"
+                        value={`${b.sessions_until_ready} ${pluralSessions(b.sessions_until_ready)}`}
+                        color="#d97706"
+                      />
+                      {b.legacy_sessions > 0 && (
+                        <MetricRow
+                          label="Не вошло в норму"
+                          value={`${b.legacy_sessions} ${pluralSessions(b.legacy_sessions)}`}
+                          note="прежний способ расчёта признаков"
+                          color="#6b7280"
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <MetricRow label="Состояние" value="Норма набрана" color="#16a34a" />
+                      <MetricRow label="Записей с оценкой" value={`${b.active_sessions} из ${b.sessions}`} />
+                      <Divider />
+                      <MetricRow
+                        label="Последнее отклонение"
+                        value={`${b.latest_deviation > 0 ? '+' : ''}${(b.latest_deviation * 100).toFixed(0)}`}
+                        note={b.latest_deviation > 0.2 ? 'хуже нормы' : b.latest_deviation < -0.2 ? 'лучше нормы' : 'в норме'}
+                        color={devColor(b.latest_deviation)}
+                      />
+                      <MetricRow
+                        label="Среднее за период"
+                        value={`${b.mean_deviation > 0 ? '+' : ''}${(b.mean_deviation * 100).toFixed(0)}`}
+                        color={devColor(b.mean_deviation)}
+                      />
+                      {b.warning_sessions > 0 && (
+                        <MetricRow
+                          label="Записей с маркером"
+                          value={`${b.warning_sessions} из ${b.active_sessions}`}
+                          note="монотонность + дрожание"
+                          color="#dc2626"
+                        />
+                      )}
+                    </>
+                  )}
+                </MetricBlock>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {verdictData && summaryStats && (
         <div style={{ marginBottom: 36 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 16px' }}>
@@ -611,31 +876,48 @@ const ReportPage = () => {
             {historyData.speech_analyses?.length > 0 && (
               <MetricBlock title="Речевой анализ" accent="#8884d8">
                 <MetricRow label="Всего сессий" value={summaryStats.totalSpeech} />
-                <MetricRow
-                  label="Средний риск"
-                  value={`${(summaryStats.avgSpeech * 100).toFixed(1)}%`}
-                  color={getRiskColor(summaryStats.avgSpeech)}
-                  note={getRiskLabel(summaryStats.avgSpeech, t)}
-                />
+                {/* Средние по режимам раздельно: интервью и чтение снимаются в
+                    разных условиях, общее среднее смешивало два измерения. */}
+                {summaryStats.avgInterview !== null && (
+                  <MetricRow
+                    label="Средний риск · интервью"
+                    value={`${(summaryStats.avgInterview * 100).toFixed(1)}%`}
+                    color={getRiskColor(summaryStats.avgInterview)}
+                    note={`${summaryStats.totalInterview} сес.`}
+                  />
+                )}
+                {summaryStats.avgReading !== null && (
+                  <MetricRow
+                    label="Средний риск · чтение"
+                    value={`${(summaryStats.avgReading * 100).toFixed(1)}%`}
+                    color={getRiskColor(summaryStats.avgReading)}
+                    note={`${summaryStats.totalReading} сес.`}
+                  />
+                )}
                 {verdictData.oldestSpeech && verdictData.newestSpeech && (
                   <MetricRow
-                    label="Первая → Последняя"
+                    label={`1-я → посл. (${verdictData.modalityLabel})`}
                     value={`${(verdictData.oldestSpeech.score * 100).toFixed(1)}% → ${(verdictData.newestSpeech.score * 100).toFixed(1)}%`}
                     color={trendInfo[verdictData.speechTrend].color}
                   />
                 )}
                 {verdictData.avgFatigueLevel !== null && (
                   <MetricRow
-                    label="Ср. уровень усталости"
+                    label="Усталость (самооценка)"
                     value={verdictData.avgFatigueLevel.toFixed(1)}
-                    note={`из ${Math.max(...(historyData.speech_analyses || []).filter(s => s.fatigue_level != null).map(s => s.fatigue_level))}`}
-                    color={verdictData.avgFatigueLevel >= 4 ? '#dc2626' : verdictData.avgFatigueLevel >= 3 ? '#d97706' : '#16a34a'}
+                    // Знаменатель — максимум ШКАЛЫ, а не максимум наблюдённых
+                    // значений: раньше здесь стоял Math.max по данным, и при
+                    // ответах не выше 7 отчёт писал «3.5 из 7».
+                    note={`из ${FATIGUE_SCALE_MAX}`}
+                    color={verdictData.avgFatigueLevel >= FATIGUE_HIGH ? '#dc2626'
+                      : verdictData.avgFatigueLevel >= FATIGUE_MODERATE ? '#d97706' : '#16a34a'}
                   />
                 )}
                 {verdictData.stressEventsCount > 0 && (
                   <MetricRow
-                    label="Стрессовых событий"
+                    label="Стрессовые события"
                     value={`${verdictData.stressEventsCount} из ${summaryStats.totalSpeech}`}
+                    note="по самоотчёту"
                     color={verdictData.stressEventsCount / summaryStats.totalSpeech > 0.5 ? '#dc2626' : '#d97706'}
                   />
                 )}
@@ -648,10 +930,12 @@ const ReportPage = () => {
 
             {historyData.mbi_results?.length > 0 && (() => {
               const m = historyData.mbi_results[0];
-              const eeColor = m.emotional_exhaustion > 32 ? '#dc2626' : m.emotional_exhaustion > 18 ? '#d97706' : '#16a34a';
-              const dpColor = m.depersonalization > 18 ? '#dc2626' : m.depersonalization > 10 ? '#d97706' : '#16a34a';
-              const paColor = m.personal_accomplishment < 19 ? '#dc2626' : m.personal_accomplishment < 30 ? '#d97706' : '#16a34a';
-              const raColor = m.reduction_of_achievements > 19 ? '#dc2626' : m.reduction_of_achievements > 13 ? '#d97706' : '#16a34a';
+              // Cutoffs for the 0–4 answer scale (standard MBI-HSS bands
+              // scaled by 4/6): EE max 36, DP max 20, PA max 32.
+              const eeColor = m.emotional_exhaustion >= 18 ? '#dc2626' : m.emotional_exhaustion >= 11 ? '#d97706' : '#16a34a';
+              const dpColor = m.depersonalization >= 9 ? '#dc2626' : m.depersonalization >= 5 ? '#d97706' : '#16a34a';
+              const paColor = m.personal_accomplishment < 21 ? '#dc2626' : m.personal_accomplishment < 26 ? '#d97706' : '#16a34a';
+              const raColor = m.reduction_of_achievements > 11 ? '#dc2626' : m.reduction_of_achievements > 6 ? '#d97706' : '#16a34a';
               return (
                 <MetricBlock title="Тест MBI (последний)" accent="#82ca9d">
                   <MetricRow label="Тестов пройдено" value={summaryStats.totalMbi} />
@@ -671,20 +955,20 @@ const ReportPage = () => {
                   <Divider />
                   <MetricRow
                     label="Эмоц. истощение"
-                    value={`${m.emotional_exhaustion} / 54`}
-                    note={`${((m.emotional_exhaustion / 54) * 100).toFixed(0)}%`}
+                    value={`${m.emotional_exhaustion} / 36`}
+                    note={`${((m.emotional_exhaustion / 36) * 100).toFixed(0)}%`}
                     color={eeColor}
                   />
                   <MetricRow
                     label="Деперсонализация"
-                    value={`${m.depersonalization} / 30`}
-                    note={`${((m.depersonalization / 30) * 100).toFixed(0)}%`}
+                    value={`${m.depersonalization} / 20`}
+                    note={`${((m.depersonalization / 20) * 100).toFixed(0)}%`}
                     color={dpColor}
                   />
                   <MetricRow
                     label="Личн. достижения"
-                    value={`${m.personal_accomplishment} / 48`}
-                    note={`${((m.personal_accomplishment / 48) * 100).toFixed(0)}%`}
+                    value={`${m.personal_accomplishment} / 32`}
+                    note={`${((m.personal_accomplishment / 32) * 100).toFixed(0)}%`}
                     color={paColor}
                   />
                   {m.reduction_of_achievements !== undefined && m.reduction_of_achievements !== null && (
@@ -768,6 +1052,44 @@ const ReportPage = () => {
       </h2>
       <div className="charts-grid">
 
+        {reportData.some(d => d.interview_deviation != null || d.reading_deviation != null) && (
+          <div className="chart-card chart-card--wide">
+            <h2 className="chart-title">
+              {t('Deviation From Personal Baseline', 'Отклонение от личной нормы по неделям')}
+            </h2>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={reportData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                <YAxis
+                  domain={[-1, 1]}
+                  tickFormatter={v => (v * 100).toFixed(0)}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip formatter={(v) => `${v > 0 ? '+' : ''}${(v * 100).toFixed(0)} п.`} />
+                <Legend />
+                {/* Ноль — собственная норма человека, а не «здоровое» значение. */}
+                <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="4 4" />
+                <Line
+                  type="monotone" dataKey="interview_deviation"
+                  name={t('Interview', 'Интервью')}
+                  stroke="#8884d8" strokeWidth={2} connectNulls dot={{ r: 4 }} activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone" dataKey="reading_deviation"
+                  name={t('Reading', 'Чтение текста')}
+                  stroke="#00d2ff" strokeWidth={2} strokeDasharray="5 3" connectNulls dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <p style={{ margin: '8px 4px 0', fontSize: 12, color: '#6b7280', lineHeight: 1.6 }}>
+              0 — ваша обычная норма, выше нуля — речь отклоняется в сторону
+              монотонности, тише и с большими паузами. Точки появляются только
+              после калибровки, поэтому первые недели наблюдения пустые.
+            </p>
+          </div>
+        )}
+
         <div className="chart-card chart-card--wide">
           <h2 className="chart-title">{t('Burnout Risk Index Over Time', 'Индекс риска выгорания по неделям')}</h2>
           <ResponsiveContainer width="100%" height={280}>
@@ -804,12 +1126,15 @@ const ReportPage = () => {
             <LineChart data={reportData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-              <YAxis domain={[-1, 1]} tick={{ fontSize: 12 }} />
-              <Tooltip />
+              {/* Left axis: sentiment polarity (range -1..1) */}
+              <YAxis yAxisId="sentiment" domain={[-1, 1]} tick={{ fontSize: 12 }} />
+              {/* Right axis: ratios (typically 0..0.1) — own scale so they aren't flattened against zero */}
+              <YAxis yAxisId="ratio" orientation="right" domain={[0, 'auto']} tickFormatter={v => `${(v * 100).toFixed(0)}%`} tick={{ fontSize: 12 }} />
+              <Tooltip formatter={(v, name) => name === t('Sentiment', 'Тональность') ? v : `${(v * 100).toFixed(1)}%`} />
               <Legend />
-              <Line type="monotone" dataKey="absolutist_index" name={t('Absolutist Index', 'Индекс абсолютизма')} stroke="#ff7300" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="negative_word_ratio" name={t('Neg. Word Ratio', 'Доля негативных слов')} stroke="#f44336" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="sentiment_polarity" name={t('Sentiment', 'Тональность')} stroke="#387908" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+              <Line yAxisId="ratio" type="monotone" dataKey="absolutist_index" name={t('Absolutist Index', 'Индекс абсолютизма')} stroke="#ff7300" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+              <Line yAxisId="ratio" type="monotone" dataKey="negative_word_ratio" name={t('Neg. Word Ratio', 'Доля негативных слов')} stroke="#f44336" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+              <Line yAxisId="sentiment" type="monotone" dataKey="sentiment_polarity" name={t('Sentiment', 'Тональность')} stroke="#387908" strokeWidth={2} connectNulls dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

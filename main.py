@@ -6,15 +6,23 @@ from datetime import datetime, timezone, timedelta
 
 from hubert import extract_hubert_embedding
 from wavlm import extract_embedding as extract_wavlm_embedding
-from feature_extraction import extract_acoustic_features
+from feature_extraction import extract_acoustic_features, FEATURE_SCHEMA_VERSION
+from audio_io import (
+    decode_audio, validate_audio, validate_voicing, AudioValidationError,
+)
 from emotion import extract_emotion
 from speech_transcriber import transcribe_bytes
 from text_features import extract_text_features
-from model import predict
+from model import predict, check_feature_schema
+from analysis import (
+    build_baseline, evaluate as evaluate_baseline,
+    BASELINE_WINDOW_SESSIONS, MIN_BASELINE_SESSIONS,
+)
 from questions import get_questions_for_week
 
 from database import engine, Base, get_db
 from models_db import User, SpeechAnalysis, MBIResult
+from sqlalchemy import text, inspect as sa_inspect
 from schemas import MBISubmit, MBIResponse, HistoryResponse, ScheduleResponse, SpeechAnalysisResponse, ReportResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -26,6 +34,39 @@ from auth import get_current_user, get_optional_user
 from routes.auth import router as auth_router
 
 Base.metadata.create_all(bind=engine)
+
+# Lightweight column migration for existing tables. SQLAlchemy's
+# create_all() only creates missing tables — it never ALTERs existing ones —
+# so newly-added columns must be backfilled here for already-populated DBs.
+def _migrate_columns(table: str, new_cols: dict):
+    inspector = sa_inspect(engine)
+    existing = {col["name"] for col in inspector.get_columns(table)}
+    with engine.connect() as conn:
+        for col_name, col_type in new_cols.items():
+            if col_name not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}"))
+        conn.commit()
+
+_migrate_columns("users", {
+    "profession": "VARCHAR",
+    "workplace": "VARCHAR",
+    "work_experience": "INTEGER",
+    "education_level": "VARCHAR",
+    "education_place": "VARCHAR",
+    "specialty": "VARCHAR",
+    "city": "VARCHAR",
+})
+_migrate_columns("speech_analyses", {
+    "model_type": "VARCHAR",
+    "feature_schema": "INTEGER",
+    "baseline_status": "VARCHAR",
+    "baseline_deviation": "FLOAT",
+    "baseline_deltas": "JSON",
+    "baseline_n": "INTEGER",
+    "baseline_warning": "BOOLEAN",
+})
+
+check_feature_schema(FEATURE_SCHEMA_VERSION)
 
 app = FastAPI(title="Burnout Predictor API — Multimodal Late Fusion")
 
@@ -55,10 +96,23 @@ async def root():
 
 
 async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transcript: bool = True) -> dict:
+    # Проверки идут ДО нейросетей. Личная норма голоса фиксируется по первым
+    # сессиям и потом не пересчитывается, поэтому непригодную запись нельзя
+    # молча превращать в нули — она навсегда испортит референс.
+    y, sr = decode_audio(audio_bytes)
+    validate_audio(y, sr)
+
+    # Акустика считается первой и служит вторым фильтром качества: Praat быстрый,
+    # а HuBERT + WavLM + wav2vec2 + Whisper — нет. Отклонять шум, музыку и шёпот
+    # дешевле до них, а не после.
+    acoustic_features = extract_acoustic_features(y, sr)
+    validate_voicing(acoustic_features["voiced_fraction"])
+
     hubert_embedding = extract_hubert_embedding(audio_bytes)
+
+    print("[Stream 1] wav2vec2 — emotion recognition...")
     emotion_result = extract_emotion(audio_bytes)
     wavlm_embedding = extract_wavlm_embedding(audio_bytes)
-    acoustic_features = extract_acoustic_features(audio_bytes)
 
     if include_transcript:
         transcript = transcribe_bytes(audio_bytes)
@@ -78,6 +132,10 @@ async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transc
     result["filename"] = filename
     result["file_size_bytes"] = len(audio_bytes)
     result["transcript"] = transcript
+    # Версия схемы обязательна: личная норма сравнивает абсолютные величины, а
+    # v1 считалась другими формулами (см. FEATURE_SCHEMA_VERSION). Смешивать
+    # записи разных версий в одной норме нельзя.
+    result["feature_schema"] = FEATURE_SCHEMA_VERSION
     result["acoustic_features"] = {
         "pitch_mean": acoustic_features.get("pitch_mean", 0),
         "pitch_std": acoustic_features.get("pitch_std", 0),
@@ -90,13 +148,48 @@ async def _run_speech_pipeline(audio_bytes: bytes, filename: str, include_transc
         "speech_rate": acoustic_features.get("speech_rate", 0),
         "pause_ratio": acoustic_features.get("pause_ratio", 0),
         "spectral_centroid_mean": acoustic_features.get("spectral_centroid_mean", 0),
+        # Метрики качества записи, не признаки модели.
+        "duration_sec": acoustic_features.get("duration_sec", 0),
+        "voiced_fraction": acoustic_features.get("voiced_fraction", 0),
     }
 
     return result
 
 
+def _attach_baseline(db, current_user, result: dict, analysis_type: str) -> None:
+    """Сравнивает запись с личной нормой пользователя в том же режиме.
+
+    Норма строится по первым BASELINE_WINDOW_SESSIONS сессиям ИМЕННО ЭТОГО
+    режима: интервью и чтение акустически несопоставимы (в чтении текст задан
+    заранее, нет пауз на обдумывание и нет своей лексики), поэтому у них
+    отдельные нормы.
+
+    Текущая запись ещё не сохранена, поэтому выборка ниже — строго предыдущие
+    сессии. Первые три записи попадают в статус "calibrating", с четвёртой
+    появляется оценка. До шестой записи окно ещё доукомплектовывается, поэтому
+    ранние точки опираются на более короткую норму — размер окна сохраняется в
+    baseline_n, чтобы это было видно в отчёте.
+    """
+    calibration = db.query(SpeechAnalysis)\
+        .filter(
+            SpeechAnalysis.user_id == current_user.id,
+            SpeechAnalysis.analysis_type == analysis_type,
+            # Только записи текущей схемы признаков: в v1 jitter/shimmer/HNR и
+            # темп речи считались другими формулами и лежат в других шкалах.
+            # Смешав версии, мы получили бы отклонение от несуществующей нормы.
+            SpeechAnalysis.feature_schema == FEATURE_SCHEMA_VERSION,
+        )\
+        .order_by(SpeechAnalysis.created_at.asc())\
+        .limit(BASELINE_WINDOW_SESSIONS)\
+        .all()
+
+    baseline = build_baseline([a.acoustic_features for a in calibration])
+    result["baseline"] = evaluate_baseline(baseline, result["acoustic_features"])
+
+
 def _save_speech_analysis(db, current_user, result: dict, *, analysis_type: str,
                            fatigue_level, stress_events, week_number=None):
+    baseline = result.get("baseline") or {}
     db_analysis = SpeechAnalysis(
         user_id=current_user.id,
         filename=result["filename"],
@@ -109,8 +202,15 @@ def _save_speech_analysis(db, current_user, result: dict, *, analysis_type: str,
         stream_contributions=result.get("stream_contributions", {}),
         emotions=result.get("emotions", {}),
         dominant_emotion=result.get("dominant_emotion", "unknown"),
+        model_type=result.get("model_type", "unknown"),
         text_analysis=result.get("text_analysis", {}),
         acoustic_features=result["acoustic_features"],
+        feature_schema=result.get("feature_schema"),
+        baseline_status=baseline.get("status"),
+        baseline_deviation=baseline.get("deviation_score"),
+        baseline_deltas=baseline.get("deltas", {}),
+        baseline_n=baseline.get("n_baseline"),
+        baseline_warning=baseline.get("is_warning", False),
         fatigue_level=fatigue_level,
         stress_events=stress_events,
         week_number=week_number,
@@ -139,6 +239,7 @@ async def predict_interview(
         result = await _run_speech_pipeline(audio_bytes, file.filename)
 
         if current_user:
+            _attach_baseline(db, current_user, result, "interview")
             _save_speech_analysis(
                 db, current_user, result,
                 analysis_type="interview",
@@ -149,6 +250,12 @@ async def predict_interview(
 
         return result
 
+    except AudioValidationError as e:
+        # Проблема во входных данных, а не на сервере — 400, чтобы фронт мог
+        # показать пользователю понятную причину и попросить перезаписать.
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -172,6 +279,7 @@ async def predict_reading(
         result = await _run_speech_pipeline(audio_bytes, file.filename, include_transcript=False)
 
         if current_user:
+            _attach_baseline(db, current_user, result, "reading")
             _save_speech_analysis(
                 db, current_user, result,
                 analysis_type="reading",
@@ -181,6 +289,10 @@ async def predict_reading(
 
         return result
 
+    except AudioValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -193,14 +305,18 @@ async def submit_mbi(
     current_user: User = Depends(get_current_user)
 ):
     try:
+        # Полнота и диапазон ответов проверены в MBISubmit, поэтому обращаемся
+        # по ключу напрямую. Прежний answers.get(f"q{i}", 0) молча подставлял
+        # ноль за пропуск и выдавал осмысленно выглядящий индекс из неполных
+        # данных.
         answers = payload.answers
         ee_indices = [0, 1, 2, 5, 7, 12, 13, 15, 19]
         dp_indices = [4, 9, 10, 14, 21]
         pa_indices = [3, 6, 8, 11, 16, 17, 18, 20]
 
-        ee_score = sum(answers.get(f"q{i}", 0) for i in ee_indices)
-        dp_score = sum(answers.get(f"q{i}", 0) for i in dp_indices)
-        pa_score = sum(answers.get(f"q{i}", 0) for i in pa_indices)
+        ee_score = sum(answers[f"q{i}"] for i in ee_indices)
+        dp_score = sum(answers[f"q{i}"] for i in dp_indices)
+        pa_score = sum(answers[f"q{i}"] for i in pa_indices)
         reduction_score = 32 - pa_score
 
         # SBSI = sqrt((EE/36)^2 + (DP/20)^2 + ((32-PA)/32)^2) / sqrt(3)
@@ -211,7 +327,6 @@ async def submit_mbi(
         db_mbi = MBIResult(
             user_id=current_user.id,
             gender=current_user.gender,
-            answers=answers,
             answers=answers,
             emotional_exhaustion=ee_score,
             depersonalization=dp_score,
@@ -230,6 +345,161 @@ async def submit_mbi(
 
 MBI_CYCLE_DAYS = 60
 SPEECH_CYCLE_DAYS = 7
+
+# Окно отчёта должно накрывать ВЕСЬ протокол. Раньше здесь стояло 8 недель
+# (56 дней), а второй MBI приходится на 60-й день — то есть первый MBI
+# выпадал из выборки и динамика по опроснику молча исчезала из отчёта.
+REPORT_WINDOW_DAYS = MBI_CYCLE_DAYS + 30
+
+REQUIRED_MBI_COUNT = 2
+REQUIRED_SPEECH_COUNT = 8
+
+# Минимум точек, ниже которого говорить о тренде нельзя — только о разнице
+# двух замеров. Две точки всегда дают идеальную прямую, это не тренд.
+MIN_TREND_POINTS = 3
+# Насколько подогнанная прямая должна сместиться ЗА ВСЁ окно наблюдения, чтобы
+# считать ряд трендом. Порог задан на суммарный сдвиг, а не на наклон в неделю:
+# при пороге на наклон ряд из значений ±0.02 (то есть весь внутри личной нормы)
+# получал ярлык «улучшение» только потому, что три шумовые точки легли под
+# небольшим уклоном. Все ряды здесь в шкале 0..1 либо -1..1.
+MIN_TREND_TOTAL_CHANGE = 0.15
+
+# Пороги правила «семантика не подтверждает акустический риск».
+CROSS_VAL_RISK_MIN = 0.6
+CROSS_VAL_ABSOLUTIST_MAX = 0.05
+CROSS_VAL_NEGATIVE_MAX = 0.05
+
+
+def _as_utc(dt):
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
+def _mean(values):
+    values = [v for v in values if v is not None]
+    return sum(values) / len(values) if values else None
+
+
+def _active_deviations(items: list) -> list:
+    """Отклонения от личной нормы только по записям с готовой нормой.
+
+    Пока идёт калибровка (первые сессии), baseline_deviation отсутствует —
+    такие записи в динамику не попадают вовсе, иначе начало наблюдения
+    выглядело бы как нулевое отклонение, то есть как «всё в норме».
+
+    Записи прежней схемы признаков тоже исключаются: их отклонения считались
+    в других шкалах и в одном ряду с новыми несопоставимы.
+    """
+    return [
+        s.baseline_deviation for s in items
+        if s.baseline_status == "active"
+        and s.baseline_deviation is not None
+        and s.feature_schema == FEATURE_SCHEMA_VERSION
+    ]
+
+
+def _text_values(items: list, key: str) -> list:
+    return [
+        s.text_analysis[key] for s in items
+        if s.text_analysis and s.text_analysis.get(key) is not None
+    ]
+
+
+def _baseline_summary(items: list) -> dict:
+    """Состояние личной нормы по режиму: готова ли и каково последнее значение.
+
+    Считаются только записи текущей схемы признаков. Записи прежней схемы
+    показываются отдельным числом, чтобы в интерфейсе было видно, почему норма
+    начала набираться заново.
+    """
+    current = [s for s in items if s.feature_schema == FEATURE_SCHEMA_VERSION]
+    deviations = _active_deviations(items)
+
+    if not current:
+        status = "no_data"
+    elif deviations:
+        status = "active"
+    elif current[-1].baseline_status == "unavailable":
+        # Сессий хватает, но калибровочные записи вырожденные — пригодных
+        # признаков меньше MIN_BASELINE_FEATURES. Ждать нечего, поэтому это не
+        # «идёт калибровка»: иначе интерфейс написал бы «нужно ещё 0 записей».
+        status = "unavailable"
+    else:
+        status = "calibrating"
+
+    return {
+        "status": status,
+        "sessions": len(current),
+        "legacy_sessions": len(items) - len(current),
+        "active_sessions": len(deviations),
+        "sessions_until_ready": (
+            0 if status in ("active", "unavailable")
+            else max(0, MIN_BASELINE_SESSIONS + 1 - len(current))
+        ),
+        "latest_deviation": deviations[-1] if deviations else None,
+        "mean_deviation": _mean(deviations),
+        "warning_sessions": sum(1 for s in current if s.baseline_warning),
+    }
+
+
+def _linear_trend(series: list) -> dict:
+    """МНК-наклон ряда (индекс недели → значение).
+
+    Заменяет прежнюю оценку «последнее минус первое»: та сравнивала два
+    случайных замера и порог 0.05 срабатывал на обычном измерительном шуме.
+    """
+    points = [(x, y) for x, y in series if y is not None]
+    n = len(points)
+    if n < MIN_TREND_POINTS:
+        return {"slope": None, "n_points": n, "direction": "insufficient"}
+
+    mean_x = sum(x for x, _ in points) / n
+    mean_y = sum(y for _, y in points) / n
+    denominator = sum((x - mean_x) ** 2 for x, _ in points)
+    if denominator < 1e-9:
+        return {"slope": None, "n_points": n, "direction": "insufficient"}
+
+    slope = sum((x - mean_x) * (y - mean_y) for x, y in points) / denominator
+
+    # Сдвиг подогнанной прямой от первой до последней точки ряда.
+    span = points[-1][0] - points[0][0]
+    total_change = slope * span
+
+    if total_change > MIN_TREND_TOTAL_CHANGE:
+        direction = "worsening"
+    elif total_change < -MIN_TREND_TOTAL_CHANGE:
+        direction = "improving"
+    else:
+        direction = "stable"
+
+    return {
+        "slope": float(slope),
+        "total_change": float(total_change),
+        "n_points": n,
+        "direction": direction,
+        "first": float(points[0][1]),
+        "last": float(points[-1][1]),
+    }
+
+
+def _report_eligibility(db, user_id: int, now: datetime) -> tuple:
+    """Считает записи в ТОМ ЖЕ окне, которое использует /report/data.
+
+    Раньше допуск к отчёту считался за всё время, а сам отчёт брал последние
+    8 недель — можно было открыть отчёт с пустым окном.
+    """
+    window_start = now - timedelta(days=REPORT_WINDOW_DAYS)
+
+    mbi_count = db.query(MBIResult)\
+        .filter(MBIResult.user_id == user_id, MBIResult.created_at >= window_start)\
+        .count()
+    speech_count = db.query(SpeechAnalysis)\
+        .filter(SpeechAnalysis.user_id == user_id, SpeechAnalysis.created_at >= window_start)\
+        .count()
+
+    can_generate = mbi_count >= REQUIRED_MBI_COUNT and speech_count >= REQUIRED_SPEECH_COUNT
+    return mbi_count, speech_count, can_generate
 
 
 @app.get("/interview/questions")
@@ -320,7 +590,7 @@ async def get_schedule(
         speech_next = now.strftime("%Y-%m-%d")
         speech_last_date = None
 
-    can_generate_report = (mbi_count >= 2) and (speech_count >= 8)
+    _, _, can_generate_report = _report_eligibility(db, current_user.id, now)
 
     today_task = None
     if mbi_due:
@@ -389,23 +659,50 @@ async def get_report_data(
     current_user: User = Depends(get_current_user)
 ):
     now = datetime.now(timezone.utc)
-    eight_weeks_ago = now - timedelta(weeks=8)
-    
+    window_start = now - timedelta(days=REPORT_WINDOW_DAYS)
+
     speech_analyses = db.query(SpeechAnalysis)\
-        .filter(SpeechAnalysis.user_id == current_user.id, SpeechAnalysis.created_at >= eight_weeks_ago)\
+        .filter(SpeechAnalysis.user_id == current_user.id, SpeechAnalysis.created_at >= window_start)\
         .order_by(SpeechAnalysis.created_at.asc())\
         .all()
 
     mbi_results = db.query(MBIResult)\
-        .filter(MBIResult.user_id == current_user.id, MBIResult.created_at >= eight_weeks_ago)\
+        .filter(MBIResult.user_id == current_user.id, MBIResult.created_at >= window_start)\
         .order_by(MBIResult.created_at.asc())\
         .all()
 
+
+    # Group by week, anchored on the user's ACTUAL data range (first → last
+    # session), not on the start of the window. Otherwise, when all sessions
+    # are collected within a short period, everything piles into the final week
+    # and the earlier weeks are empty — making the time-series charts look
+    # broken (a single point glued to the right edge, no line drawn).
     report_data = []
     cross_val_failed = False
 
-    for w in range(8):
-        week_start = eight_weeks_ago + timedelta(weeks=w)
+    all_dates = (
+        [_as_utc(s.created_at) for s in speech_analyses]
+        + [_as_utc(m.created_at) for m in mbi_results]
+    )
+
+    if all_dates:
+        first_date = min(all_dates)
+        last_date = max(all_dates)
+        # Number of weekly buckets needed to fully cover [first_date, last_date].
+        # We need base + num_weeks*7d to be STRICTLY past last_date (buckets use
+        # a half-open [start, end) test), so (span // 7) + 1 weeks. No upper cap:
+        # the span is already bounded by the REPORT_WINDOW_DAYS query window, and
+        # a fixed cap would drop a session sitting exactly on the last boundary.
+        span_days = (last_date - first_date).days
+        num_weeks = max(1, (span_days // 7) + 1)
+        base = first_date
+    else:
+        num_weeks = 0
+        base = window_start
+
+    # We'll calculate weekly averages for the metrics
+    for w in range(num_weeks):
+        week_start = base + timedelta(weeks=w)
         week_end = week_start + timedelta(weeks=1)
         
         week_speech = [s for s in speech_analyses if week_start <= (s.created_at.replace(tzinfo=timezone.utc) if s.created_at.tzinfo is None else s.created_at) < week_end]
@@ -414,97 +711,90 @@ async def get_report_data(
         week_interviews = [s for s in week_speech if s.analysis_type == "interview"]
         week_readings = [s for s in week_speech if s.analysis_type == "reading"]
 
+        # Интервью и чтение НЕ сводятся в одно среднее: условия съёма разные
+        # (в чтении текст задан заранее и лингвистического потока нет вовсе),
+        # поэтому общий speech_score смешивал два несопоставимых измерения.
+        # Он оставлен только как сводка активности, а динамику дают отдельные
+        # ряды по режимам.
         dp = {
             "week_start": week_start,
             "week_end": week_end,
             "week_number": w + 1,
-            "mbi_score": None,
-            "speech_score": None,
-            "interview_score": None,
-            "reading_score": None,
-            "absolutist_index": None,
-            "negative_word_ratio": None,
-            "sentiment_polarity": None,
+            "mbi_score": _mean([m.burnout_index for m in week_mbi]),
+            "speech_score": _mean([s.score for s in week_speech]),
+            "interview_score": _mean([s.score for s in week_interviews]),
+            "reading_score": _mean([s.score for s in week_readings]),
+            # Лонгитюдный сигнал: отклонение от личной нормы (analysis.py).
+            # В отличие от score он сопоставим во времени для одного человека.
+            "interview_deviation": _mean(_active_deviations(week_interviews)),
+            "reading_deviation": _mean(_active_deviations(week_readings)),
+            # Лингвистика есть только у интервью — у чтения нет транскрипта.
+            "absolutist_index": _mean(_text_values(week_interviews, "absolutist_index")),
+            "negative_word_ratio": _mean(_text_values(week_interviews, "negative_word_ratio")),
+            "sentiment_polarity": _mean(_text_values(week_interviews, "sentiment_polarity")),
             "speech_count": len(week_speech),
             "interview_count": len(week_interviews),
             "reading_count": len(week_readings),
             "mbi_count": len(week_mbi),
         }
 
-        if week_mbi:
-            dp["mbi_score"] = sum(m.burnout_index for m in week_mbi) / len(week_mbi)
-
-        if week_speech:
-            dp["speech_score"] = sum(s.score for s in week_speech) / len(week_speech)
-
-        if week_interviews:
-            dp["interview_score"] = sum(s.score for s in week_interviews) / len(week_interviews)
-
-        if week_readings:
-            dp["reading_score"] = sum(s.score for s in week_readings) / len(week_readings)
-
-        if week_speech:
-            abs_indexes = []
-            neg_ratios = []
-            sentiments = []
-            for s in week_interviews:
-                if s.text_analysis:
-                    if "absolutist_index" in s.text_analysis:
-                        abs_indexes.append(s.text_analysis["absolutist_index"])
-                    if "negative_word_ratio" in s.text_analysis:
-                        neg_ratios.append(s.text_analysis["negative_word_ratio"])
-                    if "sentiment_polarity" in s.text_analysis:
-                        sentiments.append(s.text_analysis["sentiment_polarity"])
-
-            if abs_indexes:
-                dp["absolutist_index"] = sum(abs_indexes) / len(abs_indexes)
-            if neg_ratios:
-                dp["negative_word_ratio"] = sum(neg_ratios) / len(neg_ratios)
-            if sentiments:
-                dp["sentiment_polarity"] = sum(sentiments) / len(sentiments)
-
         report_data.append(dp)
 
-    avg_mbi = None
-    avg_speech = None
-    avg_abs = None
-    avg_neg = None
-    avg_sent = None
-    
-    valid_mbis = [d["mbi_score"] for d in report_data if d["mbi_score"] is not None]
-    if valid_mbis:
-        avg_mbi = sum(valid_mbis) / len(valid_mbis)
-        
-    valid_speech = [d["speech_score"] for d in report_data if d["speech_score"] is not None]
-    if valid_speech:
-        avg_speech = sum(valid_speech) / len(valid_speech)
-        
-    valid_abs = [d["absolutist_index"] for d in report_data if d["absolutist_index"] is not None]
-    if valid_abs:
-        avg_abs = sum(valid_abs) / len(valid_abs)
-        
-    valid_neg = [d["negative_word_ratio"] for d in report_data if d["negative_word_ratio"] is not None]
-    if valid_neg:
-        avg_neg = sum(valid_neg) / len(valid_neg)
-        
-    valid_sent = [d["sentiment_polarity"] for d in report_data if d["sentiment_polarity"] is not None]
-    if valid_sent:
-        avg_sent = sum(valid_sent) / len(valid_sent)
-        
-    cross_validation_message = None
+    interviews = [s for s in speech_analyses if s.analysis_type == "interview"]
+    readings = [s for s in speech_analyses if s.analysis_type == "reading"]
 
-    if avg_speech is not None and avg_speech > 0.6:
-        if avg_abs is not None and avg_abs < 0.05 and avg_neg is not None and avg_neg < 0.05 and avg_sent is not None and avg_sent > 0.0:
+    # Средние считаются по самим сессиям, а не по недельным средним: недели
+    # содержат разное число записей, и среднее из средних даёт им равный вес.
+    avg_interview = _mean([s.score for s in interviews])
+    avg_mbi = _mean([m.burnout_index for m in mbi_results])
+    avg_abs = _mean(_text_values(interviews, "absolutist_index"))
+    avg_neg = _mean(_text_values(interviews, "negative_word_ratio"))
+    avg_sent = _mean(_text_values(interviews, "sentiment_polarity"))
+
+    trends = {
+        "interview_deviation": _linear_trend(
+            [(d["week_number"], d["interview_deviation"]) for d in report_data]),
+        "reading_deviation": _linear_trend(
+            [(d["week_number"], d["reading_deviation"]) for d in report_data]),
+        "interview_score": _linear_trend(
+            [(d["week_number"], d["interview_score"]) for d in report_data]),
+        "reading_score": _linear_trend(
+            [(d["week_number"], d["reading_score"]) for d in report_data]),
+        "mbi_score": _linear_trend(
+            [(d["week_number"], d["mbi_score"]) for d in report_data]),
+    }
+
+    baseline = {
+        name: _baseline_summary(items)
+        for name, items in (("interview", interviews), ("reading", readings))
+    }
+
+    # Правило «семантика не подтверждает акустический риск». Считается только
+    # по интервью: акустика и лингвистика тогда снимаются с ОДНИХ записей, и
+    # сравнение осмысленно. Пороги эвристические и на реальных данных не
+    # калибровались — это предупреждение для человека, а не вывод модели.
+    cross_validation_message = None
+    semantics_constructive = (
+        avg_abs is not None and avg_abs < CROSS_VAL_ABSOLUTIST_MAX
+        and avg_neg is not None and avg_neg < CROSS_VAL_NEGATIVE_MAX
+        and avg_sent is not None and avg_sent > 0.0
+    )
+
+    if semantics_constructive:
+        acoustic_flags = avg_interview is not None and avg_interview > CROSS_VAL_RISK_MIN
+        mbi_flags = avg_mbi is not None and avg_mbi > CROSS_VAL_RISK_MIN
+        if acoustic_flags or mbi_flags:
             cross_val_failed = True
-            cross_validation_message = "Risk of burnout is not confirmed by cross-data. The semantic content remains constructive."
-            
-    if not cross_val_failed and avg_mbi is not None and avg_mbi > 0.6:
-        if avg_abs is not None and avg_abs < 0.05 and avg_neg is not None and avg_neg < 0.05 and avg_sent is not None and avg_sent > 0.0:
-            cross_val_failed = True
-            cross_validation_message = "Risk of burnout is not confirmed by cross-data. The semantic content remains constructive."
+            cross_validation_message = (
+                "Risk of burnout is not confirmed by cross-data. "
+                "The semantic content remains constructive."
+            )
 
     return ReportResponse(
         data=report_data,
+        trends=trends,
+        baseline=baseline,
+        window_days=REPORT_WINDOW_DAYS,
         cross_validation_failed=cross_val_failed,
         cross_validation_message=cross_validation_message
     )
@@ -515,11 +805,19 @@ async def generate_pdf_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    mbi_count = db.query(MBIResult).filter(MBIResult.user_id == current_user.id).count()
-    speech_count = db.query(SpeechAnalysis).filter(SpeechAnalysis.user_id == current_user.id).count()
+    now = datetime.now(timezone.utc)
+    mbi_count, speech_count, can_generate = _report_eligibility(db, current_user.id, now)
 
-    if mbi_count < 2 or speech_count < 8:
-        raise HTTPException(status_code=403, detail="Requirements not met: 2 MBI and 8 Speech analyses required.")
+    if not can_generate:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Requirements not met: {REQUIRED_MBI_COUNT} MBI and "
+                f"{REQUIRED_SPEECH_COUNT} speech analyses required within the "
+                f"last {REPORT_WINDOW_DAYS} days "
+                f"(have {mbi_count} and {speech_count})."
+            ),
+        )
 
     speech_analyses = db.query(SpeechAnalysis)\
         .filter(SpeechAnalysis.user_id == current_user.id)\

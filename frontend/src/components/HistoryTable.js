@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { emotionIcon } from '../helpers/formatters';
+import { emotionIcon, normalizeRiskLabel } from '../helpers/formatters';
 
 const HistoryTable = ({ data, onRowClick, emptyKey = "history_table.no_data" }) => {
   const { t } = useTranslation();
@@ -61,9 +61,12 @@ const HistoryTable = ({ data, onRowClick, emptyKey = "history_table.no_data" }) 
                 </td>
                 <td className="center">
                   <span className="ht-risk-badge" style={{ background: riskHex }}>
-                    {rec.label === "Low Risk" ? t("history.low_risk")
-                      : rec.label === "Moderate Risk" ? t("history.moderate_risk")
-                      : rec.label === "High Risk" ? t("history.high_risk") : rec.label}
+                    {(() => {
+                      const risk = normalizeRiskLabel(rec.label);
+                      return risk === "Low Risk" ? t("history.low_risk")
+                        : risk === "Moderate Risk" ? t("history.moderate_risk")
+                        : risk === "High Risk" ? t("history.high_risk") : risk;
+                    })()}
                   </span>
                 </td>
                 <td className="center muted">{confidencePercent}%</td>

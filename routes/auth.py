@@ -73,6 +73,20 @@ def update_me(
         current_user.phone_number = payload.phone_number
     if payload.age is not None:
         current_user.age = payload.age
+    if payload.profession is not None:
+        current_user.profession = payload.profession
+    if payload.workplace is not None:
+        current_user.workplace = payload.workplace
+    if payload.work_experience is not None:
+        current_user.work_experience = payload.work_experience
+    if payload.education_level is not None:
+        current_user.education_level = payload.education_level
+    if payload.education_place is not None:
+        current_user.education_place = payload.education_place
+    if payload.specialty is not None:
+        current_user.specialty = payload.specialty
+    if payload.city is not None:
+        current_user.city = payload.city
     db.commit()
     db.refresh(current_user)
     return current_user

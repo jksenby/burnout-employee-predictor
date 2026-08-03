@@ -23,18 +23,41 @@ os.symlink = _safe_symlink
 # ────────────────────────────────────────────────────────────────────────────
 
 from faster_whisper import WhisperModel
+import ctranslate2
 import numpy as np
 import soundfile as sf
 import io
 
 _whisper_model = None
 
+# Path to a CTranslate2-converted, Kazakh/Russian fine-tuned model
+# (see scripts/convert_whisper_model.py). Used automatically when present.
+_FINETUNED_DIR = os.path.join(os.path.dirname(__file__), "models", "whisper-kazrus-ct2")
+
+
+def _resolve_config():
+    """Pick model / device / compute_type. Env vars override; otherwise we
+    auto-detect a CUDA GPU (via CTranslate2, not torch) and prefer the
+    fine-tuned model when it has been converted locally."""
+    has_gpu = ctranslate2.get_cuda_device_count() > 0
+
+    model = os.environ.get("WHISPER_MODEL")
+    if model is None:
+        model = _FINETUNED_DIR if os.path.isdir(_FINETUNED_DIR) else "large-v3"
+
+    device = os.environ.get("WHISPER_DEVICE") or ("cuda" if has_gpu else "cpu")
+    compute_type = os.environ.get("WHISPER_COMPUTE_TYPE") or (
+        "float16" if device == "cuda" else "int8"
+    )
+    return model, device, compute_type
+
 
 def _load_model():
     global _whisper_model
     if _whisper_model is None:
-        print("Loading Faster-Whisper model (small, int8, cpu)...")
-        _whisper_model = WhisperModel("small", device="cpu", compute_type="int8")
+        model, device, compute_type = _resolve_config()
+        print(f"Loading Faster-Whisper model ({model}, {compute_type}, {device})...")
+        _whisper_model = WhisperModel(model, device=device, compute_type=compute_type)
         print("Faster-Whisper model loaded")
     return _whisper_model
 
@@ -62,7 +85,10 @@ def transcribe_bytes(audio_bytes: bytes) -> str:
 
         audio = _load_audio_from_bytes(audio_bytes, target_sr=16000)
 
-        segments, info = model.transcribe(audio, beam_size=1)
+        # beam_size=5 (vs greedy=1) and VAD filtering improve accuracy on
+        # noisy / multi-language audio; language is left unset for KZ/RU/EN
+        # auto-detection per utterance.
+        segments, info = model.transcribe(audio, beam_size=5, vad_filter=True)
         text = " ".join([segment.text for segment in segments]).strip()
 
         print(f"Faster-Whisper transcription ({len(text.split())} words): "

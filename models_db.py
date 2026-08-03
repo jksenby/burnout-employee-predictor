@@ -15,6 +15,13 @@ class User(Base):
     gender = Column(String, nullable=False)
     phone_number = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
+    profession = Column(String, nullable=True)
+    workplace = Column(String, nullable=True)
+    work_experience = Column(Integer, nullable=True)
+    education_level = Column(String, nullable=True)
+    education_place = Column(String, nullable=True)
+    specialty = Column(String, nullable=True)
+    city = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     speech_analyses = relationship("SpeechAnalysis", back_populates="user")
@@ -40,8 +47,24 @@ class SpeechAnalysis(Base):
     stream_contributions = Column(JSON)
     emotions = Column(JSON)
     dominant_emotion = Column(String)
+    model_type = Column(String, nullable=True)
     text_analysis = Column(JSON)
     acoustic_features = Column(JSON)
+    # Версия способа расчёта акустических признаков (feature_extraction.
+    # FEATURE_SCHEMA_VERSION). NULL — запись до версионирования. Личная норма
+    # строится только по записям одной версии: v1 считала jitter/shimmer/HNR и
+    # темп речи другими формулами, и величины лежат в других шкалах.
+    feature_schema = Column(Integer, nullable=True)
+
+    # Лонгитюдный сигнал: отклонение этой записи от личной нормы того же
+    # пользователя в том же режиме (см. analysis.py). Независим от score —
+    # score абсолютный и межличностно несопоставимый, эти поля относительные.
+    baseline_status = Column(String, nullable=True)      # calibrating|active|unavailable
+    baseline_deviation = Column(Float, nullable=True)    # [-1, 1], + = хуже нормы
+    baseline_deltas = Column(JSON, nullable=True)        # относительные сдвиги по признакам
+    baseline_n = Column(Integer, nullable=True)          # сессий в калибровочном окне
+    baseline_warning = Column(Boolean, nullable=True)    # маркер монотонности + дрожания
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="speech_analyses")

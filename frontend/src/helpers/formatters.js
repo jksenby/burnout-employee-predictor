@@ -8,6 +8,19 @@ export const formatPercent = (v) =>
 export const capitalize = (str) =>
   !str ? "—" : str.charAt(0).toUpperCase() + str.slice(1);
 
+// Модель отдаёт "Medium Risk" (см. labels в model.py), а интерфейс везде ждал
+// "Moderate Risk". Из-за расхождения счётчик умеренного риска в отчёте всегда
+// показывал 0, а подписи падали в английский фолбэк вместо перевода.
+const RISK_LABEL_ALIASES = { "Medium Risk": "Moderate Risk" };
+
+export const normalizeRiskLabel = (label) =>
+  label ? RISK_LABEL_ALIASES[label] || label : label;
+
+// Отклонение от личной нормы: (-1, 1), положительное — хуже своей нормы.
+// Это НЕ вероятность выгорания, поэтому и подписывается иначе, чем score.
+export const formatDeviation = (v) =>
+  v == null ? "—" : `${v > 0 ? "+" : ""}${(Number(v) * 100).toFixed(0)}`;
+
 export const emotionIcon = (name) => {
   const icons = {
     angry: <i className="fa-solid fa-face-angry"></i>,

@@ -1,4 +1,5 @@
 import numpy as np
+import json
 import os
 import joblib
 
@@ -11,6 +12,12 @@ HUBERT_FEATURE_NAMES = [
 
 EMOTION_FEATURE_NAMES = [
     "emo_angry", "emo_happy", "emo_sad", "emo_neutral"
+]
+
+WAVLM_FEATURE_NAMES = [
+    "wavlm_norm", "wavlm_mean", "wavlm_std", "wavlm_skew",
+    "wavlm_kurtosis", "wavlm_pos_ratio", "wavlm_max_abs",
+    "wavlm_min", "wavlm_max", "wavlm_median"
 ]
 
 ACOUSTIC_FEATURE_NAMES = [
@@ -28,12 +35,79 @@ TEXT_FEATURE_NAMES = [
     "word_count", "avg_word_length"
 ]
 
+# Нейтральные значения текстовых признаков — средние по трём классам
+# синтетического генератора из train.py. Нужны для режима чтения, где
+# транскрипт не снимается (main.py: include_transcript=False).
+#
+# Занулять эти признаки нельзя: модель обучалась на векторах, где они ВСЕГДА
+# заполнены, и вектор с word_count=0 и avg_word_length=0 (против ~30–60 и ~4.0
+# в обучении) оказывается за пределами обучающего распределения — предсказание
+# на нём ничего не значит. Значения ниже означают «поток не даёт информации»,
+# а не «в тексте нет негатива».
+#
+# train.py при обучении печатает эмпирические средние по этим признакам —
+# если генератор меняется, числа ниже нужно обновить.
+TEXT_FEATURE_DEFAULTS = {
+    "sentiment_polarity": -0.0233,
+    "sentiment_subjectivity": 0.51,
+    "absolutist_index": 0.0283,
+    "first_person_ratio": 0.08,
+    "negative_word_ratio": 0.0183,
+    "hedging_ratio": 0.035,
+    "word_count": 45.0,
+    "avg_word_length": 4.0,
+}
+
 ALL_FEATURE_NAMES = (
     HUBERT_FEATURE_NAMES + EMOTION_FEATURE_NAMES +
-    ACOUSTIC_FEATURE_NAMES + TEXT_FEATURE_NAMES
+    WAVLM_FEATURE_NAMES + ACOUSTIC_FEATURE_NAMES + TEXT_FEATURE_NAMES
 )
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "burnout_model.pkl")
+MODEL_META_PATH = os.path.join(os.path.dirname(__file__), "burnout_model.meta.json")
+
+
+def load_model_meta() -> dict:
+    """Метаданные обученной модели (пишутся train.py). Пусто, если их нет."""
+    if not os.path.exists(MODEL_META_PATH):
+        return {}
+    try:
+        with open(MODEL_META_PATH, encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception as e:
+        print(f"Warning: could not read model metadata ({e})")
+        return {}
+
+
+def check_feature_schema(current_version: int) -> bool:
+    """Сверяет схему признаков, на которой обучалась модель, с текущей.
+
+    Без этой проверки модель, обученную на прежних шкалах (shimmer ~0.25 против
+    ~0.06, темп речи в музыкальных онсетах против слогов), нельзя отличить от
+    актуальной: предсказания остаются формально валидными и молча превращаются
+    в мусор.
+    """
+    meta = load_model_meta()
+    trained = meta.get("feature_schema")
+
+    if trained is None:
+        print(
+            "WARNING: burnout_model.pkl has no metadata — it was trained before "
+            "feature-schema versioning. Predictions may not match the current "
+            "feature scales. Run `python train.py` to retrain."
+        )
+        return False
+
+    if trained != current_version:
+        print(
+            f"WARNING: model was trained on feature schema v{trained}, but "
+            f"feature_extraction now produces v{current_version}. Absolute "
+            "predictions are unreliable until you run `python train.py`."
+        )
+        return False
+
+    print(f"Model feature schema v{trained} matches feature_extraction.")
+    return True
 
 
 class BurnoutMultimodalClassifier:
@@ -104,13 +178,21 @@ class BurnoutMultimodalClassifier:
         vec.append(emotions.get("sad", 0.0))
         vec.append(emotions.get("neutral", 0.0))
 
+        vec.extend(self._extract_wavlm_stats(wavlm_embedding))
+
         acoustic_vec = []
         for name in ACOUSTIC_FEATURE_NAMES:
             acoustic_vec.append(float(acoustic_features.get(name, 0.0)))
         vec.extend(acoustic_vec)
 
+        # См. TEXT_FEATURE_DEFAULTS: отсутствующий транскрипт (режим чтения)
+        # заполняется нейтральными значениями, а не нулями.
+        text_source = text_features or {}
         for name in TEXT_FEATURE_NAMES:
-            vec.append(float(text_features.get(name, 0.0)))
+            value = text_source.get(name)
+            if value is None:
+                value = TEXT_FEATURE_DEFAULTS[name]
+            vec.append(float(value))
 
         return np.array(vec, dtype=np.float32)
 
@@ -155,17 +237,23 @@ class BurnoutMultimodalClassifier:
         importances = self.model.feature_importances_
         n_hubert = len(HUBERT_FEATURE_NAMES)
         n_emotion = len(EMOTION_FEATURE_NAMES)
+        n_wavlm = len(WAVLM_FEATURE_NAMES)
         n_acoustic = len(ACOUSTIC_FEATURE_NAMES)
-        n_text = len(TEXT_FEATURE_NAMES)
+
+        # Feature layout: [HuBERT | Emotion | WavLM | Acoustic | Text].
+        # The "wavlm_prosody" stream covers BOTH the WavLM embedding stats and
+        # the librosa prosodic/acoustic features (Stream 2 = WavLM + Acoustic).
+        i_emotion = n_hubert
+        i_wavlm = i_emotion + n_emotion
+        i_acoustic = i_wavlm + n_wavlm
+        i_text = i_acoustic + n_acoustic
 
         stream_importance = {
-            "hubert_acoustic": float(np.sum(importances[:n_hubert])),
-            "emotion": float(np.sum(importances[n_hubert:n_hubert + n_emotion])),
-            "wavlm_prosody": float(np.sum(importances[
-                n_hubert + n_emotion:n_hubert + n_emotion + n_acoustic
-            ])),
+            "hubert_acoustic": float(np.sum(importances[:i_emotion])),
+            "emotion": float(np.sum(importances[i_emotion:i_wavlm])),
+            "wavlm_prosody": float(np.sum(importances[i_wavlm:i_text])),
             "faster_whisper_linguistic": float(np.sum(importances[
-                n_hubert + n_emotion + n_acoustic:
+                i_text:
             ])) if text_features else 0.0,
         }
 
@@ -228,23 +316,33 @@ class BurnoutMultimodalClassifier:
             0, 1
         )
 
-        sentiment = text_features.get("sentiment_polarity", 0.0)
-        absolutist = text_features.get("absolutist_index", 0.0)
-        negative_ratio = text_features.get("negative_word_ratio", 0.0)
+        # Веса задаются на доступные потоки и нормируются на их сумму. Без
+        # транскрипта лингвистический член просто выпадает: подставлять в него
+        # нули означало бы «речь идеально нейтральна», то есть добавлять к
+        # оценке несуществующее свидетельство.
+        components = [
+            (0.25, hubert_variability_risk),
+            (0.20, exhaustion),
+            (0.25, prosody_risk),
+            (0.15, wavlm_variability_risk),
+        ]
 
-        linguistic_risk = np.clip(
-            0.4 * (1.0 - np.clip((sentiment + 1.0) / 2.0, 0, 1)) +
-            0.3 * np.clip(absolutist * 10, 0, 1) +
-            0.3 * np.clip(negative_ratio * 10, 0, 1),
-            0, 1
-        )
+        if text_features:
+            sentiment = text_features.get("sentiment_polarity", 0.0)
+            absolutist = text_features.get("absolutist_index", 0.0)
+            negative_ratio = text_features.get("negative_word_ratio", 0.0)
 
+            linguistic_risk = np.clip(
+                0.4 * (1.0 - np.clip((sentiment + 1.0) / 2.0, 0, 1)) +
+                0.3 * np.clip(absolutist * 10, 0, 1) +
+                0.3 * np.clip(negative_ratio * 10, 0, 1),
+                0, 1
+            )
+            components.append((0.15, linguistic_risk))
+
+        total_weight = sum(w for w, _ in components)
         score = float(np.clip(
-            0.25 * hubert_variability_risk +
-            0.20 * exhaustion +
-            0.25 * prosody_risk +
-            0.15 * wavlm_variability_risk +
-            0.15 * linguistic_risk,
+            sum(w * v for w, v in components) / total_weight,
             0.0, 1.0
         ))
 

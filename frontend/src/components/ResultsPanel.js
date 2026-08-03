@@ -3,8 +3,28 @@ import { useTranslation } from 'react-i18next';
 import MetricRow from './MetricRow';
 import {
   formatFloat, formatHz, formatDb, formatRate,
-  formatPercent, capitalize, emotionIcon, formatSentiment
+  formatPercent, capitalize, emotionIcon, formatSentiment,
+  normalizeRiskLabel, formatDeviation
 } from '../helpers/formatters';
+
+// Подписи признаков, по которым считается отклонение от личной нормы
+// (RISK_DIRECTION в analysis.py).
+const BASELINE_FEATURE_LABELS = {
+  pitch_std: 'Вариативность тона',
+  pitch_range: 'Диапазон тона',
+  energy_mean: 'Громкость',
+  speech_rate: 'Темп речи',
+  hnr: 'Чистота голоса (HNR)',
+  pause_ratio: 'Доля пауз',
+  jitter: 'Дрожание тона (jitter)',
+  shimmer: 'Дрожание громкости (shimmer)',
+};
+
+// Знак «плохого» направления: должен совпадать с RISK_DIRECTION в analysis.py.
+const BASELINE_RISK_DIRECTION = {
+  pitch_std: -1, pitch_range: -1, energy_mean: -1, speech_rate: -1, hnr: -1,
+  pause_ratio: 1, jitter: 1, shimmer: 1,
+};
 
 const STREAM_CONFIG = [
   { key: 'hubert_acoustic', label: 'HuBERT Acoustic', cls: 'hubert' },
@@ -20,11 +40,13 @@ const ResultsPanel = ({ data }) => {
   const {
     label, score, confidence, probabilities,
     stream_contributions, emotions, dominant_emotion,
-    text_analysis, transcript, acoustic_features, model_type
+    text_analysis, transcript, acoustic_features, model_type, baseline
   } = data;
 
+  const risk = normalizeRiskLabel(label);
+
   let riskClass = 'low';
-  if (label.includes('Medium')) riskClass = 'medium';
+  if (label.includes('Medium') || label.includes('Moderate')) riskClass = 'medium';
   if (label.includes('High')) riskClass = 'high';
 
   const scorePercent = (score * 100).toFixed(0);
@@ -34,9 +56,9 @@ const ResultsPanel = ({ data }) => {
     <div className="results-container show">
       <div className={`risk-card ${riskClass}`}>
         <div className="risk-label">
-          {label === "Low Risk" ? t("history.low_risk") : 
-           label === "Moderate Risk" ? t("history.moderate_risk") : 
-           label === "High Risk" ? t("history.high_risk") : label}
+          {risk === "Low Risk" ? t("history.low_risk") :
+           risk === "Moderate Risk" ? t("history.moderate_risk") :
+           risk === "High Risk" ? t("history.high_risk") : risk}
         </div>
         <div className="risk-meta">
           <div className="risk-meta-item">{t("results_panel.risk_score")}: <span>{scorePercent}/100</span></div>
@@ -60,9 +82,95 @@ const ResultsPanel = ({ data }) => {
         </div>
 
         <div className="model-badge">
-          <span>{model_type === 'trained_gradient_boosting' ? t("results_panel.trained_model") : t("results_panel.heuristic_fallback")}</span>
+          <span>{model_type === 'trained_gradient_boosting'
+            ? t("results_panel.trained_model")
+            : model_type === 'heuristic_fallback'
+            ? t("results_panel.heuristic_fallback")
+            : t("results_panel.model_unknown")}</span>
         </div>
       </div>
+
+      {baseline && baseline.status !== 'unavailable' && (() => {
+        const dev = baseline.deviation_score;
+        const tone = baseline.direction === 'worse' ? '#dc2626'
+          : baseline.direction === 'better' ? '#16a34a' : '#d97706';
+
+        // Признаки сортируются по «ухудшению»: delta × направление риска.
+        const ranked = Object.entries(baseline.deltas || {})
+          .map(([key, delta]) => ({
+            key, delta, badness: delta * (BASELINE_RISK_DIRECTION[key] || 0),
+          }))
+          .sort((a, b) => b.badness - a.badness)
+          .slice(0, 4);
+
+        return (
+          <div style={{
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            borderLeft: `4px solid ${baseline.status === 'calibrating' ? '#9ca3af' : tone}`,
+            borderRadius: 10,
+            padding: '16px 20px',
+            marginBottom: 20,
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: '#6b7280',
+              textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 10,
+            }}>
+              Сравнение с личной нормой
+            </div>
+
+            {baseline.status === 'calibrating' ? (
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: '#4b5563' }}>
+                Идёт калибровка: система запоминает, как звучит именно ваш голос
+                в спокойном состоянии. Записей пока {baseline.n_baseline}, нужно
+                ещё {baseline.sessions_until_ready}. После этого появится оценка
+                динамики — насколько запись отличается от вашей собственной нормы,
+                а не от «среднего человека».
+              </p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
+                  <span style={{ fontSize: 30, fontWeight: 700, color: tone, lineHeight: 1 }}>
+                    {formatDeviation(dev)}
+                  </span>
+                  <span style={{ fontSize: 14, color: '#4b5563' }}>
+                    {baseline.direction === 'worse'
+                      ? 'хуже вашей обычной нормы'
+                      : baseline.direction === 'better'
+                      ? 'лучше вашей обычной нормы'
+                      : 'в пределах вашей обычной нормы'}
+                    <span style={{ color: '#9ca3af' }}>
+                      {' '}(шкала −100…+100, норма по {baseline.n_baseline} записям)
+                    </span>
+                  </span>
+                </div>
+
+                {baseline.is_warning && baseline.warning_reason && (
+                  <div style={{
+                    background: '#fef2f2', border: '1px solid #fca5a5',
+                    borderRadius: 8, padding: '8px 12px', marginBottom: 10,
+                    fontSize: 13, color: '#991b1b',
+                  }}>
+                    ⚠ {baseline.warning_reason}
+                  </div>
+                )}
+
+                {ranked.length > 0 && (
+                  <div>
+                    {ranked.map(({ key, delta, badness }) => (
+                      <MetricRow
+                        key={key}
+                        name={BASELINE_FEATURE_LABELS[key] || key}
+                        value={`${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}% к норме · ${badness > 0 ? 'хуже' : 'лучше'}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="panels-grid">
         <div className="panel acoustic">

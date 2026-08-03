@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
@@ -8,7 +9,11 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models_db import User
 
-SECRET_KEY = "burnout-predictor-secret-key-change-in-production"
+# ── Config ──
+# Read from the environment in production; the literal is a dev-only fallback.
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY", "burnout-predictor-secret-key-change-in-production"
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -17,16 +22,20 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 import bcrypt
 
 
+def _pwd_bytes(password: str) -> bytes:
+    # bcrypt only uses the first 72 bytes and newer versions raise on longer
+    # input, so truncate explicitly (must match between hash and verify).
+    return password.encode('utf-8')[:72]
+
+
 def hash_password(password: str) -> str:
-    pwd_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pwd_bytes, salt).decode('utf-8')
+    return bcrypt.hashpw(_pwd_bytes(password), salt).decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    pwd_bytes = plain_password.encode('utf-8')
     hashed_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+    return bcrypt.checkpw(_pwd_bytes(plain_password), hashed_bytes)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

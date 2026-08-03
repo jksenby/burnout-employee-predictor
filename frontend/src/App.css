@@ -2058,6 +2058,17 @@ audio.show { display: block; }
     margin-top: 10px;
 }
 
+.profile-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-top: 4px;
+}
+
 .form-message {
     padding: 12px;
     border-radius: 10px;
