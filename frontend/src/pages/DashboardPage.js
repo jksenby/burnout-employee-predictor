@@ -29,7 +29,7 @@ const DashboardPage = () => {
       }
     };
     fetchSchedule();
-  }, [token]);
+  }, [token, t]);
 
   if (loading) return <LoadingIndicator />;
 

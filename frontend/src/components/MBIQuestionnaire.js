@@ -43,12 +43,6 @@ const MBIQuestionnaire = () => {
     }
   };
 
-  const handleReset = () => {
-    setSubmitted(false);
-    setCurrentIdx(0);
-    setAnswers({});
-  };
-
   if (loading) {
     return (
       <div className="mbi-container mbi-mcq-container" style={{ textAlign: 'center', padding: '60px' }}>

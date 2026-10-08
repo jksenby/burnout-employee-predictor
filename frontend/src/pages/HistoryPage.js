@@ -35,7 +35,7 @@ const HistoryPage = () => {
       }
     };
     fetchHistory();
-  }, [token]);
+  }, [token, t]);
 
   if (loading) return <LoadingIndicator />;
 
