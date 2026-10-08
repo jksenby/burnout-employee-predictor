@@ -2,7 +2,6 @@ import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.metrics import classification_report
-from sklearn.preprocessing import StandardScaler
 import joblib
 import json
 import os

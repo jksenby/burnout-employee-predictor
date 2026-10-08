@@ -1,6 +1,5 @@
 import torch
 import io
-import numpy as np
 import soundfile as sf
 import torchaudio
 from transformers import pipeline

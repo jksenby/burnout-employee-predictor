@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import traceback
 from datetime import datetime, timezone, timedelta
 
@@ -943,8 +942,8 @@ async def generate_pdf_report(
     pdf.set_font(font_name, "B", 14)
     pdf.cell(0, 10, "Assessment Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font(font_name, "", 12)
-    pdf.cell(0, 10, f"- Total MBI Questionnaires: {mbi_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.cell(0, 10, f"- Total Speech Analyses: {speech_count}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, f"- Total MBI Questionnaires: {len(mbi_results)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, f"- Total Speech Analyses: {len(speech_analyses)}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
 
     pdf.set_font(font_name, "B", 14)
